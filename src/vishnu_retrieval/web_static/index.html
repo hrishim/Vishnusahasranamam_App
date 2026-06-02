@@ -1,0 +1,74 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+    <meta name="theme-color" content="#244f7a">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-title" content="Vishnu">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <title>Vishnusahasranamam</title>
+    <link rel="manifest" href="/manifest.webmanifest">
+    <link rel="icon" href="/icon.svg" type="image/svg+xml">
+    <link rel="apple-touch-icon" href="/icon.svg">
+    <link rel="stylesheet" href="/styles.css">
+  </head>
+  <body>
+    <main class="app-shell">
+      <header class="topbar">
+        <div class="brand">
+          <img class="brand-icon" src="/icon.svg" alt="">
+          <div>
+            <h1>Vishnusahasranamam</h1>
+            <p>Local verbatim retrieval</p>
+          </div>
+        </div>
+        <button class="ghost-button" id="helpButton" type="button">Help</button>
+      </header>
+
+      <section class="search-panel" aria-label="Search">
+        <div class="query-row">
+          <input id="queryInput" autocomplete="off" autocapitalize="none" placeholder="ह्रीषीकेशः or Agrahyah">
+          <button class="primary-button" id="searchButton" type="button">Find</button>
+        </div>
+
+        <div class="mode-row" role="radiogroup" aria-label="Search mode">
+          <button class="mode-button active" type="button" data-mode="entry" aria-pressed="true">Full Entry</button>
+          <button class="mode-button" type="button" data-mode="exact" aria-pressed="false">Exact Search</button>
+          <button class="mode-button" type="button" data-mode="sloka" aria-pressed="false">Sloka Search</button>
+          <button class="mode-button" type="button" data-mode="hybrid" aria-pressed="false">Hybrid Search</button>
+        </div>
+      </section>
+
+      <section class="result-panel" aria-label="Result">
+        <pre id="output" class="output" aria-live="polite"></pre>
+        <div id="meta" class="meta"></div>
+      </section>
+
+      <footer class="actionbar">
+        <button id="copyButton" type="button">Copy Output</button>
+        <button id="clearButton" type="button">Clear</button>
+        <span id="status" class="status">Ready</span>
+      </footer>
+    </main>
+
+    <dialog id="helpDialog" class="help-dialog">
+      <h2>Search Options</h2>
+      <dl>
+        <dt>Full Entry</dt>
+        <dd>Best for a nāma/headword. It returns the containing śloka when available, then the complete extracted entry and stops at the next entry. If the same nāma appears more than once, each numbered entry is shown separately.</dd>
+        <dt>Exact Search</dt>
+        <dd>Best for an exact Sanskrit or English word/phrase. It finds every direct occurrence in the text, shows nearby extracted text, and adds the containing śloka when the occurrence is inside one.</dd>
+        <dt>Sloka Search</dt>
+        <dd>Best for a word inside a śloka. It returns the full extracted śloka block, including the roman transliteration when available.</dd>
+        <dt>Hybrid Search</dt>
+        <dd>Best when you do not know the exact wording. It uses keyword plus related-text search to find likely passages.</dd>
+        <dt>Copy Output</dt>
+        <dd>Copies only the extracted passage text. Page and OCR notes are shown in the app but are not included in the copied text.</dd>
+      </dl>
+      <button id="closeHelpButton" type="button">Close</button>
+    </dialog>
+
+    <script src="/app.js"></script>
+  </body>
+</html>
