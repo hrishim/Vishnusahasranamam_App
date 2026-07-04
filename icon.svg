@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" role="img" aria-label="Vishnusahasranamam">
+  <rect width="256" height="256" rx="48" fill="#244f7a"/>
+  <circle cx="128" cy="128" r="82" fill="#f7f7f4"/>
+  <circle cx="128" cy="128" r="58" fill="none" stroke="#244f7a" stroke-width="10"/>
+  <path d="M128 56v144M56 128h144M77 77l102 102M179 77 77 179" stroke="#244f7a" stroke-width="9" stroke-linecap="round"/>
+  <circle cx="128" cy="128" r="18" fill="#244f7a"/>
+</svg>

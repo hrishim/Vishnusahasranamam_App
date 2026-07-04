@@ -1,0 +1,69 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+    <meta name="theme-color" content="#244f7a">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-title" content="Vishnu">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <title>Vishnusahasranamam</title>
+    <link rel="manifest" href="manifest.webmanifest">
+    <link rel="icon" href="icon.svg" type="image/svg+xml">
+    <link rel="apple-touch-icon" href="icon.svg">
+    <link rel="stylesheet" href="styles.css">
+  </head>
+  <body>
+    <main class="app-shell">
+      <header class="topbar">
+        <div class="brand">
+          <img class="brand-icon" src="icon.svg" alt="">
+          <div>
+            <h1>Vishnusahasranamam</h1>
+            <p>Works on iPhone and iPad after first load.</p>
+          </div>
+        </div>
+        <button class="ghost-button" id="helpButton" type="button">Help</button>
+      </header>
+
+      <section class="search-panel" aria-label="Search">
+        <div class="query-row">
+          <input id="queryInput" autocomplete="off" autocapitalize="none" placeholder="प्राणदः, Madhava, or where do the three Vedas come from">
+          <button class="primary-button" id="searchButton" type="button">Find</button>
+        </div>
+
+        <div class="mode-row" role="radiogroup" aria-label="Search mode">
+          <button class="mode-button active" type="button" data-mode="entry" aria-pressed="true">Nāma Search</button>
+          <button class="mode-button" type="button" data-mode="exact" aria-pressed="false">Exact Text</button>
+          <button class="mode-button" type="button" data-mode="answer" aria-pressed="false">Ask Question</button>
+        </div>
+      </section>
+
+      <section class="result-panel" aria-label="Result">
+        <pre id="output" class="output" aria-live="polite"></pre>
+        <div id="meta" class="meta"></div>
+      </section>
+
+      <footer class="actionbar">
+        <button id="copyButton" type="button">Copy Output</button>
+        <button id="clearButton" type="button">Clear Search</button>
+        <span id="status" class="status">Loading...</span>
+      </footer>
+    </main>
+
+    <dialog id="helpDialog" class="help-dialog">
+      <h2>Search Options</h2>
+      <dl>
+        <dt>Nāma Search</dt>
+        <dd>Best for one of the 1000 names. Type Devanagari or Roman text such as Pranada, Madhava, Hrisikesa.</dd>
+        <dt>Exact Text</dt>
+        <dd>Finds exact Sanskrit or English words in entries and ślokas.</dd>
+        <dt>Ask Question</dt>
+        <dd>Finds likely local passages and gives a short answer only when the match is strong enough.</dd>
+      </dl>
+      <button id="closeHelpButton" type="button">Close</button>
+    </dialog>
+
+    <script src="app.js"></script>
+  </body>
+</html>
