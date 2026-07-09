@@ -26,6 +26,94 @@ function setMode(mode) {
   });
 }
 
+function hasDevanagari(text) {
+  return /[\u0900-\u097F]/.test(text);
+}
+
+function looksLikeTransliteration(text) {
+  const clean = text.trim();
+  const englishWords = /\b(the|one|who|word|means|lord|being|because|since|therefore|where|when|which|this|that|with|from|into|everything|pervades)\b/i;
+  return /[āīūṛṝḷṅñṭḍṇśṣḥṃ]/i.test(clean) && !englishWords.test(clean) && !/[.!?]$/.test(clean);
+}
+
+function makeTextNode(tag, className, text) {
+  const node = document.createElement(tag);
+  node.className = className;
+  node.textContent = text;
+  output.appendChild(node);
+}
+
+function appendParagraphs(text) {
+  const clean = text.replace(/\s+/g, " ").trim();
+  if (!clean) return;
+  const sentences = clean.match(/[^.!?]+[.!?]+(?:\s+|$)|[^.!?]+$/g) || [clean];
+  let current = "";
+  for (const part of sentences) {
+    const sentence = part.trim();
+    const candidate = current ? `${current} ${sentence}` : sentence;
+    if (current && candidate.length > 520) {
+      makeTextNode("p", "result-paragraph", current);
+      current = sentence;
+    } else {
+      current = candidate;
+    }
+  }
+  if (current) {
+    makeTextNode("p", "result-paragraph", current);
+  }
+}
+
+function renderOutput(text) {
+  output.textContent = "";
+  const lines = String(text || "").replace(/\r\n/g, "\n").split("\n");
+  let paragraph = [];
+
+  function flushParagraph() {
+    const clean = paragraph.join(" ").replace(/\s+/g, " ").trim();
+    paragraph = [];
+    appendParagraphs(clean);
+  }
+
+  for (const rawLine of lines) {
+    const line = rawLine.trim();
+    if (!line) {
+      const last = paragraph[paragraph.length - 1] || "";
+      if (last && !/[.!?।॥:'"”)]$/.test(last)) {
+        continue;
+      }
+      flushParagraph();
+      continue;
+    }
+    if (/^(Entry|Match)\s+\d+\b/.test(line)) {
+      flushParagraph();
+      makeTextNode("h2", "result-heading", line);
+      continue;
+    }
+    if (/^(Answer|Śloka)\b/.test(line)) {
+      flushParagraph();
+      makeTextNode("h3", "result-subheading", line);
+      continue;
+    }
+    if (line.startsWith("- ")) {
+      flushParagraph();
+      makeTextNode("p", "result-bullet", line.slice(2).trim());
+      continue;
+    }
+    if (hasDevanagari(line)) {
+      flushParagraph();
+      makeTextNode("div", "script-line", line);
+      continue;
+    }
+    if (looksLikeTransliteration(line)) {
+      flushParagraph();
+      makeTextNode("div", "translit-line", line);
+      continue;
+    }
+    paragraph.push(line);
+  }
+  flushParagraph();
+}
+
 async function runSearch() {
   const query = queryInput.value.trim();
   if (!query) {
@@ -35,7 +123,7 @@ async function runSearch() {
   }
 
   setStatus("Searching...");
-  output.textContent = "";
+  renderOutput("");
   copyText = "";
 
   try {
@@ -48,11 +136,11 @@ async function runSearch() {
     if (!response.ok) {
       throw new Error(payload.error || "Search failed");
     }
-    output.textContent = payload.display_text || "";
+    renderOutput(payload.display_text || "");
     copyText = payload.copy_text || "";
     setStatus("Ready");
   } catch (error) {
-    output.textContent = error.message;
+    renderOutput(error.message);
     setStatus("Error");
   }
 }
@@ -74,7 +162,7 @@ async function copyOutput() {
 
 function clearAll() {
   queryInput.value = "";
-  output.textContent = "";
+  renderOutput("");
   copyText = "";
   setStatus("Ready");
   queryInput.focus();
