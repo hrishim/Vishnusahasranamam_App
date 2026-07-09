@@ -10,7 +10,7 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from urllib.parse import unquote, urlparse
 
-from .desktop_app import render_entry, render_exact, render_hybrid, render_sloka
+from .desktop_app import render_answer, render_entry, render_exact, render_hybrid, render_sloka
 
 
 STATIC_DIR = Path(__file__).with_name("web_static")
@@ -26,12 +26,14 @@ def render_search(mode: str, query: str) -> dict[str, str]:
         result = render_sloka(query)
     elif mode == "hybrid":
         result = render_hybrid(query)
+    elif mode == "answer":
+        result = render_answer(query)
     else:
         raise ValueError("Unknown search mode.")
     return {
         "display_text": result.display_text,
         "copy_text": result.copy_text,
-        "meta_text": result.meta_text,
+        "meta_text": "",
     }
 
 

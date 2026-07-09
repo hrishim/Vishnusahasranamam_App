@@ -6,6 +6,7 @@ import sys
 from pathlib import Path
 
 from .docx_source import run_docx_ingest
+from .epub_source import run_epub_ingest
 from .indexer import build_index
 from .io import INDEX_JSON, NAMA_NUMBERS_JSON, PAGES_JSONL
 from .nama_index import build_nama_number_index, numbers_for_devanagari_name
@@ -77,6 +78,19 @@ def cmd_docx_ingest(args: argparse.Namespace) -> int:
     inferred = sum(1 for record in records if record.warnings)
     if inferred:
         print(f"PDF citation alignment warnings on {inferred} logical pages.")
+    index = build_index(PAGES_JSONL, INDEX_JSON, max_chars=args.max_chars, overlap=args.overlap)
+    print(f"Index complete: {index['chunk_count']} chunks -> {INDEX_JSON}")
+    return 0
+
+
+def cmd_epub_ingest(args: argparse.Namespace) -> int:
+    records = run_epub_ingest(
+        Path(args.epub),
+        PAGES_JSONL,
+        pdf_path=Path(args.pdf) if args.pdf else None,
+        alignment_pages_jsonl=Path(args.alignment_pages),
+    )
+    print(f"EPUB extraction complete: {len(records)} aligned pages -> {PAGES_JSONL}")
     index = build_index(PAGES_JSONL, INDEX_JSON, max_chars=args.max_chars, overlap=args.overlap)
     print(f"Index complete: {index['chunk_count']} chunks -> {INDEX_JSON}")
     return 0
@@ -251,6 +265,18 @@ def build_parser() -> argparse.ArgumentParser:
     docx_ingest.add_argument("--max-chars", type=int, default=1200)
     docx_ingest.add_argument("--overlap", type=int, default=180)
     docx_ingest.set_defaults(func=cmd_docx_ingest)
+
+    epub_ingest = sub.add_parser("epub-ingest", help="Build clean text and retrieval index from an EPUB source.")
+    epub_ingest.add_argument("epub")
+    epub_ingest.add_argument("--pdf", help="PDF path used only for source/citation metadata.")
+    epub_ingest.add_argument(
+        "--alignment-pages",
+        default=str(PAGES_JSONL),
+        help="Existing page JSONL used to align EPUB paragraphs to citation pages.",
+    )
+    epub_ingest.add_argument("--max-chars", type=int, default=1200)
+    epub_ingest.add_argument("--overlap", type=int, default=180)
+    epub_ingest.set_defaults(func=cmd_epub_ingest)
 
     nama_index = sub.add_parser("nama-index", help="Build an auxiliary Devanagari name-to-nama-number index.")
     nama_index.add_argument("pdf")

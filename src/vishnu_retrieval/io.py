@@ -25,6 +25,7 @@ PAGES_JSONL = OCR_DIR / "pages.jsonl"
 INDEX_JSON = INDEX_DIR / "index.json"
 SLOKAS_JSON = INDEX_DIR / "slokas.json"
 NAMA_NUMBERS_JSON = INDEX_DIR / "nama_numbers.json"
+DERIVATION_OVERRIDES_JSON = INDEX_DIR / "derivation_overrides.json"
 
 
 def ensure_dirs() -> None:

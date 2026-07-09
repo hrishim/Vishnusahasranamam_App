@@ -8,16 +8,16 @@
     <meta name="apple-mobile-web-app-title" content="Vishnu">
     <meta name="apple-mobile-web-app-status-bar-style" content="default">
     <title>Vishnusahasranamam</title>
-    <link rel="manifest" href="/manifest.webmanifest">
-    <link rel="icon" href="/icon.svg" type="image/svg+xml">
-    <link rel="apple-touch-icon" href="/icon.svg">
-    <link rel="stylesheet" href="/styles.css">
+    <link rel="manifest" href="manifest.webmanifest">
+    <link rel="icon" href="icon.svg" type="image/svg+xml">
+    <link rel="apple-touch-icon" href="icon.svg">
+    <link rel="stylesheet" href="styles.css">
   </head>
   <body>
     <main class="app-shell">
       <header class="topbar">
         <div class="brand">
-          <img class="brand-icon" src="/icon.svg" alt="">
+          <img class="brand-icon" src="icon.svg" alt="">
           <div>
             <h1>Vishnusahasranamam</h1>
             <p>Search nāmas, passages, and questions. Results stay local.</p>
@@ -46,7 +46,7 @@
       <footer class="actionbar">
         <button id="copyButton" type="button">Copy</button>
         <button id="clearButton" type="button">Clear</button>
-        <span id="status" class="status">Ready</span>
+        <span id="status" class="status">Loading...</span>
       </footer>
     </main>
 
@@ -59,12 +59,10 @@
         <dd>Best for an exact Sanskrit or English word or phrase.</dd>
         <dt>Question</dt>
         <dd>Best for a simple question. It gives a short answer when the matching passage is strong enough.</dd>
-        <dt>Copy</dt>
-        <dd>Copies the result text without internal notes.</dd>
       </dl>
       <button id="closeHelpButton" type="button">Close</button>
     </dialog>
 
-    <script src="/app.js"></script>
+    <script src="app.js"></script>
   </body>
 </html>

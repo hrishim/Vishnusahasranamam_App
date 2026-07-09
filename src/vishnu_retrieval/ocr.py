@@ -7,6 +7,7 @@ import tempfile
 from collections import defaultdict
 from pathlib import Path
 
+from .corrections import apply_curated_corrections
 from .io import PAGES_DIR, ensure_dirs, sha256_file, write_jsonl
 from .models import PageRecord
 from .textutil import normalize_text
@@ -222,6 +223,8 @@ def run_ocr(
                 image_path = render_page(pdf_path, page, tmp_dir, dpi)
                 text, avg_conf, low_ratio, word_count = page_text_from_tsv(tesseract_tsv(image_path, langs, psm))
                 warnings = warnings_for_page(text, avg_conf, low_ratio, word_count)
+            text = apply_curated_corrections(text)
+            word_count = len(text.split())
             record = PageRecord(
                 page=page,
                 text=text,

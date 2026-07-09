@@ -15,6 +15,7 @@ class PageRecord:
     source_pdf: str
     source_sha256: str
     source_docx: str | None = None
+    source_epub: str | None = None
 
     def to_json(self) -> dict[str, Any]:
         return asdict(self)

@@ -105,12 +105,15 @@ def build_index(
     source_pdfs = sorted({page.source_pdf for page in pages})
     source_hashes = sorted({page.source_sha256 for page in pages})
     source_docxs = sorted({page.source_docx for page in pages if page.source_docx})
+    source_epubs = sorted({page.source_epub for page in pages if page.source_epub})
     index = {
         "schema_version": 1,
         "source_pdf": source_pdfs[0] if len(source_pdfs) == 1 else None,
         "source_pdfs": source_pdfs,
         "source_docx": source_docxs[0] if len(source_docxs) == 1 else None,
         "source_docxs": source_docxs,
+        "source_epub": source_epubs[0] if len(source_epubs) == 1 else None,
+        "source_epubs": source_epubs,
         "source_sha256": source_hashes[0] if len(source_hashes) == 1 else None,
         "source_sha256s": source_hashes,
         "chunk_count": len(chunks),

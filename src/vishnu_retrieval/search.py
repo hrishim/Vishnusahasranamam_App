@@ -7,6 +7,9 @@ from dataclasses import dataclass
 from functools import lru_cache
 from pathlib import Path
 
+from .canonical import devanagari_key as canonical_devanagari_key
+from .canonical import load_canonical_namas
+from .corrections import apply_curated_corrections
 from .indexer import keyword_score
 from .io import INDEX_JSON, PAGES_JSONL, SLOKAS_JSON, read_index, read_pages
 from .textutil import cosine, normalize_text, sparse_vector, tokenize
@@ -17,6 +20,7 @@ ROMAN_CHARS = "A-Za-zāīūṛṝḷṅñṭḍṇśṣḥĀĪŪṚṜḶṄÑ�
 
 ENTRY_HEADING_RE = re.compile(
     rf"(?m)^\s*(?:(?:\d{{1,4}}|(?:\d{{1,4}}\s+and\s+\d{{1,4}}))[.;][^\S\n]+)?[\u0900-\u097F][^\n]{{0,90}}?[^\S\n]+[{ROMAN_INITIAL_CHARS}][{ROMAN_CHARS}'’.-]+(?:[^\n]*)?$"
+    rf"|^\s*\d{{1,4}}\s*[.;][^\S\n]+[{ROMAN_INITIAL_CHARS}][{ROMAN_CHARS}'’.-]+(?:[^\n]{{0,80}})?$"
 )
 NAMA_HEADING_RE = re.compile(
     rf"^\s*(?:(?:\d{{1,4}}|(?:\d{{1,4}}\s+and\s+\d{{1,4}}))[.;][^\S\n]+)?"
@@ -25,6 +29,11 @@ NAMA_HEADING_RE = re.compile(
     rf"(?P<roman>[{ROMAN_INITIAL_CHARS}][{ROMAN_CHARS}'’.-]+)"
     r"(?P<rest>[^\n]*)$"
 )
+ROMAN_NAMA_HEADING_RE = re.compile(
+    rf"^\s*(?:\d\s*){{1,4}}\s*[.;][^\S\n]*"
+    rf"(?P<roman>[{ROMAN_INITIAL_CHARS}][{ROMAN_CHARS}'’.-]+(?:[^\n]{{0,80}})?)$"
+)
+NUMBERED_ENTRY_LINE_RE = re.compile(r"^\s*(?P<num>(?:\d\s*){0,4})\s*[.;]\s*(?P<title>.+?)\s*$")
 SCRIPTURE_ROMAN_RE = re.compile(
     r"^(?:BG|MB|Mu\.?Up|Tai\.?Up|Ta\.?Up|Ka\.?Up|Vi\.?Pu|Vi|Harivamsa|Yogasiitra|YE|Arth)\.?:?$"
 )
@@ -60,6 +69,16 @@ class EntryHit:
     page_end: int
     text: str
     warnings: list[str]
+    number: int | None = None
+
+
+@dataclass
+class EntryNumberEvent:
+    number: int
+    page_index: int
+    page: int
+    start: int
+    heading: str
 
 
 @dataclass
@@ -95,8 +114,31 @@ def latin_fold(text: str) -> str:
 def roman_match_key(text: str) -> str:
     folded = latin_fold(text)
     folded = folded.replace("sh", "s")
+    folded = folded.replace("si", "shi")
+    folded = folded.replace("sri", "shri")
     folded = re.sub(r"[^a-z]", "", folded)
     return folded[:-1] if folded.endswith("h") else folded
+
+
+def roman_skeleton(text: str) -> str:
+    return re.sub(r"[aeiou]", "", roman_match_key(text))
+
+
+def digits_match_expected(raw_digits: str, expected: int) -> bool:
+    if not raw_digits:
+        return True
+    expected_text = str(expected)
+    if raw_digits == expected_text:
+        return True
+    if expected_text.startswith(raw_digits) or expected_text.endswith(raw_digits):
+        return True
+    if int(raw_digits) == expected % 10 or int(raw_digits) == expected % 100:
+        return True
+    cursor = 0
+    for char in expected_text:
+        if cursor < len(raw_digits) and raw_digits[cursor] == char:
+            cursor += 1
+    return cursor == len(raw_digits)
 
 
 def devanagari_match_key(text: str) -> str:
@@ -162,9 +204,19 @@ def devanagari_keys_match(query: str, heading: str) -> bool:
 
 
 def parse_nama_heading(line: str) -> tuple[str, str] | None:
-    match = NAMA_HEADING_RE.match(line.strip())
+    stripped_line = line.strip()
+    match = NAMA_HEADING_RE.match(stripped_line)
     if not match:
-        return None
+        roman_match = ROMAN_NAMA_HEADING_RE.match(stripped_line)
+        if not roman_match:
+            return None
+        roman = re.sub(r"\s*\([^)]*\)\s*$", "", roman_match.group("roman").strip())
+        if len(roman.split()) > 5 or any(mark in roman for mark in "।॥|"):
+            return None
+        if "." in roman or SCRIPTURE_ROMAN_RE.match(roman):
+            return None
+        return "", roman
+
     roman = match.group("roman").strip()
     rest = match.group("rest").strip()
     if any(mark in rest for mark in "।॥|"):
@@ -177,6 +229,128 @@ def parse_nama_heading(line: str) -> tuple[str, str] | None:
     return sanskrit, roman
 
 
+NON_NAME_WORDS = {
+    "an",
+    "and",
+    "because",
+    "buffet",
+    "for",
+    "from",
+    "generally",
+    "i",
+    "illusion",
+    "inability",
+    "misunderstanding",
+    "or",
+    "that",
+    "the",
+    "this",
+    "to",
+    "with",
+    "without",
+}
+
+
+def clean_entry_title(title: str) -> str:
+    title = re.sub(r"\s*\([^)]*\)\s*$", "", title).strip()
+    return re.sub(r"\s+", " ", title)
+
+
+def looks_like_entry_title(title: str) -> bool:
+    title = clean_entry_title(title)
+    if not title or len(title) > 90:
+        return False
+    if any(mark in title for mark in "।॥|,:"):
+        return False
+    words = re.findall(rf"[{ROMAN_CHARS}]+", title)
+    if not words and not canonical_devanagari_key(title):
+        return False
+    if len(words) > 5:
+        return False
+    if words and words[0].casefold() in NON_NAME_WORDS:
+        return False
+    return True
+
+
+def canonical_alias_keys(row: dict) -> set[str]:
+    aliases = {
+        str(row.get("roman", "")),
+        str(row.get("source_title", "")),
+    }
+    keys = {roman_match_key(alias) for alias in aliases if alias}
+    for key in list(keys):
+        if key.startswith("hr"):
+            keys.add("hri" + key[2:])
+    return {key for key in keys if key}
+
+
+def canonical_numbers_for_query(query: str) -> list[int]:
+    query = normalize_text(query).strip()
+    if not query:
+        return []
+    numbers: list[int] = []
+    q_devanagari = canonical_devanagari_key(query)
+    q_roman = roman_match_key(query)
+    for row in load_canonical_namas():
+        number = int(row.get("number", 0))
+        if not (1 <= number <= 1000):
+            continue
+        if q_devanagari:
+            row_devanagari = str(row.get("devanagari", ""))
+            if row_devanagari and devanagari_keys_match(query, row_devanagari):
+                numbers.append(number)
+            continue
+        if not q_roman:
+            continue
+        for alias_key in canonical_alias_keys(row):
+            if q_roman == alias_key:
+                numbers.append(number)
+                break
+    return sorted(dict.fromkeys(numbers))
+
+
+@lru_cache(maxsize=8)
+def entry_number_events(pages_jsonl: str = str(PAGES_JSONL)) -> tuple[EntryNumberEvent, ...]:
+    pages = read_pages(Path(pages_jsonl))
+    events: list[EntryNumberEvent] = []
+    expected = 1
+    for page_index, page in enumerate(pages):
+        offset = 0
+        for raw_line in normalize_text(page.text).splitlines(keepends=True):
+            line = raw_line.rstrip("\r\n")
+            stripped = line.strip()
+            match = NUMBERED_ENTRY_LINE_RE.match(stripped)
+            if not match:
+                offset += len(raw_line)
+                continue
+            title = clean_entry_title(match.group("title"))
+            if not looks_like_entry_title(title):
+                offset += len(raw_line)
+                continue
+            raw_digits = re.sub(r"\s+", "", match.group("num"))
+            assigned: int | None = None
+            if expected <= 1000 and digits_match_expected(raw_digits, expected):
+                assigned = expected
+                expected += 1
+            elif raw_digits:
+                raw_value = int(raw_digits)
+                if expected <= raw_value <= 1000:
+                    assigned = raw_value
+                    expected = raw_value + 1
+            if assigned is not None and 1 <= assigned <= 1000:
+                events.append(
+                    EntryNumberEvent(
+                        number=assigned,
+                        page_index=page_index,
+                        page=page.page,
+                        start=offset + raw_line.find(stripped),
+                        heading=stripped,
+                    )
+                )
+            offset += len(raw_line)
+    return tuple(events)
+
+
 def heading_matches_query(entry_text: str, query: str) -> bool:
     heading = entry_text.splitlines()[0].strip() if entry_text.splitlines() else ""
     parsed = parse_nama_heading(heading)
@@ -184,6 +358,8 @@ def heading_matches_query(entry_text: str, query: str) -> bool:
         return False
     sanskrit, roman = parsed
     if devanagari_match_key(query):
+        if not sanskrit:
+            return False
         return devanagari_keys_match(query, sanskrit)
     needle = normalize_text(query).casefold()
     if needle and needle in normalize_text(sanskrit).casefold():
@@ -194,7 +370,28 @@ def heading_matches_query(entry_text: str, query: str) -> bool:
         return False
     if len(folded_needle) <= 3:
         return folded_needle == folded_haystack
-    return folded_needle in folded_haystack
+    if folded_needle in folded_haystack:
+        return True
+    needle_skeleton = roman_skeleton(query)
+    haystack_skeleton = roman_skeleton(roman)
+    return len(needle_skeleton) >= 4 and needle_skeleton in haystack_skeleton
+
+
+def heading_exactness(entry_text: str, query: str) -> int:
+    heading = entry_text.splitlines()[0].strip() if entry_text.splitlines() else ""
+    parsed = parse_nama_heading(heading)
+    if not parsed:
+        return 0
+    sanskrit, roman = parsed
+    if devanagari_match_key(query):
+        return 3 if sanskrit and devanagari_keys_match(query, sanskrit) else 0
+    folded_needle = roman_match_key(query)
+    folded_haystack = roman_match_key(roman)
+    if folded_needle and folded_needle == folded_haystack:
+        return 3
+    if folded_needle and folded_haystack.startswith(folded_needle):
+        return 2
+    return 1 if heading_matches_query(entry_text, query) else 0
 
 
 def heading_occurrences(page_text: str, query: str) -> list[int]:
@@ -392,6 +589,18 @@ def query_sloka_number(query: str) -> int | None:
     compact = re.sub(r"[^\d०-९]", "", text)
     if compact and len(compact) == len(text.replace(" ", "")):
         return parse_int_token(compact)
+    labelled = re.fullmatch(
+        r"(?i)\s*(?:slo+ka|shlo+ka|śloka|verse|श्लोक|श्लोका)\s*[:#.\-]?\s*([0-9०-९]{1,3})\s*",
+        text,
+    )
+    if labelled:
+        return parse_int_token(labelled.group(1))
+    reversed_label = re.fullmatch(
+        r"(?i)\s*([0-9०-९]{1,3})\s*(?:slo+ka|shlo+ka|śloka|verse|श्लोक|श्लोका)\s*",
+        text,
+    )
+    if reversed_label:
+        return parse_int_token(reversed_label.group(1))
     return None
 
 
@@ -587,6 +796,77 @@ def load_hits(index_path: Path = INDEX_JSON) -> tuple[list[dict], dict]:
     return index.get("chunks", []), index.get("keyword", {})
 
 
+QUERY_INSTRUCTION_WORDS = {
+    "about",
+    "a",
+    "an",
+    "and",
+    "are",
+    "come",
+    "comes",
+    "define",
+    "describe",
+    "do",
+    "does",
+    "explain",
+    "find",
+    "for",
+    "from",
+    "give",
+    "how",
+    "in",
+    "is",
+    "meaning",
+    "of",
+    "on",
+    "please",
+    "search",
+    "show",
+    "tell",
+    "the",
+    "this",
+    "to",
+    "what",
+    "where",
+}
+
+QUERY_EXPANSIONS = {
+    "bagha": ["bhaga", "virtues", "six-fold"],
+    "bhaga": ["virtues", "six-fold"],
+    "vedas": ["veda", "trayi", "pranava"],
+}
+
+
+def retrieval_query_text(query: str) -> str:
+    tokens = tokenize(query)
+    terms: list[str] = []
+    for token in tokens:
+        if token in QUERY_INSTRUCTION_WORDS:
+            continue
+        terms.append(token)
+        terms.extend(QUERY_EXPANSIONS.get(token, []))
+    return " ".join(terms) or query
+
+
+def strong_hits(hits: list[SearchHit], top_k: int) -> list[SearchHit]:
+    if not hits:
+        return []
+    best_score = hits[0].score
+    best_keyword = max(hit.keyword_score for hit in hits)
+    filtered: list[SearchHit] = []
+    for hit in hits:
+        if hit.keyword_score <= 0:
+            continue
+        if best_keyword and hit.keyword_score < best_keyword * 0.70:
+            continue
+        if best_score and hit.score < best_score * 0.70:
+            continue
+        filtered.append(hit)
+        if len(filtered) >= top_k:
+            break
+    return filtered or hits[:1]
+
+
 def hybrid_search(
     query: str,
     index_path: Path = INDEX_JSON,
@@ -595,8 +875,9 @@ def hybrid_search(
     vector_weight: float = 0.45,
 ) -> list[SearchHit]:
     chunks, stats = load_hits(index_path)
-    q_tokens = tokenize(query)
-    q_vector = sparse_vector(query)
+    retrieval_query = retrieval_query_text(query)
+    q_tokens = tokenize(retrieval_query)
+    q_vector = sparse_vector(retrieval_query)
     raw_hits: list[SearchHit] = []
     keyword_scores: list[float] = []
     vector_scores: list[float] = []
@@ -622,7 +903,10 @@ def hybrid_search(
     max_keyword = max(keyword_scores) if keyword_scores else 0.0
     max_vector = max(vector_scores) if vector_scores else 0.0
     scored: list[SearchHit] = []
+    has_keyword_matches = any(hit.keyword_score > 0 for hit in raw_hits)
     for hit in raw_hits:
+        if has_keyword_matches and hit.keyword_score <= 0:
+            continue
         norm_keyword = hit.keyword_score / max_keyword if max_keyword else 0.0
         norm_vector = hit.vector_score / max_vector if max_vector else 0.0
         hit.score = keyword_weight * norm_keyword + vector_weight * norm_vector
@@ -746,6 +1030,16 @@ def preceding_sloka_for_entry(entry: EntryHit, pages_jsonl: Path = PAGES_JSONL) 
 
 
 def extract_entry(query: str, pages_jsonl: Path = PAGES_JSONL, window_after: int = 4) -> list[EntryHit]:
+    canonical_numbers = canonical_numbers_for_query(query)
+    if canonical_numbers:
+        hits_by_number = [
+            hit
+            for number in canonical_numbers
+            for hit in extract_entry_by_number(number, pages_jsonl, window_after=window_after)
+        ]
+        if hits_by_number:
+            return hits_by_number
+
     pages = read_pages(pages_jsonl)
     needle = normalize_text(query)
     scored_hits: list[tuple[int, EntryHit]] = []
@@ -828,13 +1122,81 @@ def extract_entry(query: str, pages_jsonl: Path = PAGES_JSONL, window_after: int
                     page_end=max(included_pages),
                     text=entry_text,
                     warnings=warnings,
+                    number=None,
                     ),
                 )
             )
 
     results = [hit for _, hit in sorted(scored_hits, key=lambda item: item[0])]
     heading_results = [hit for hit in results if heading_matches_query(hit.text, query)]
-    return heading_results or results
+    if heading_results:
+        return sorted(heading_results, key=lambda hit: (-heading_exactness(hit.text, query), hit.page_start))
+    return results
+
+
+def extract_entry_by_number(number: int, pages_jsonl: Path = PAGES_JSONL, window_after: int = 4) -> list[EntryHit]:
+    pages = read_pages(pages_jsonl)
+    events = list(entry_number_events(str(pages_jsonl)))
+    event_by_number = {event.number: event for event in events}
+    event = event_by_number.get(number)
+    if not event:
+        return []
+
+    window_pages = pages[max(0, event.page_index - 1) : min(len(pages), event.page_index + window_after)]
+    pieces: list[tuple[int, int, int, str]] = []
+    combined = ""
+    entry_start: int | None = None
+    for window_page in window_pages:
+        start = len(combined)
+        if combined:
+            combined += "\n\n"
+            start = len(combined)
+        text = normalize_text(window_page.text)
+        combined += text
+        end = len(combined)
+        pieces.append((window_page.page, start, end, text))
+        if window_page.page == event.page:
+            entry_start = start + event.start
+
+    if entry_start is None:
+        return []
+
+    entry_end = len(combined)
+    for candidate in events:
+        if candidate.number <= number:
+            continue
+        if candidate.page < window_pages[0].page or candidate.page > window_pages[-1].page:
+            continue
+        candidate_start: int | None = None
+        for page_num, start, _, _ in pieces:
+            if page_num == candidate.page:
+                candidate_start = start + candidate.start
+                break
+        if candidate_start is not None and candidate_start > entry_start:
+            entry_end = candidate_start
+            break
+
+    entry_text = trim_trailing_verse_prelude(combined[entry_start:entry_end])
+    if not entry_text:
+        return []
+    included_pages = [
+        page_num
+        for page_num, start, end, _ in pieces
+        if start < entry_end and end > entry_start
+    ]
+    warnings: list[str] = []
+    for page in window_pages:
+        if page.page in included_pages:
+            warnings.extend(page.warnings)
+    return [
+        EntryHit(
+            page_start=min(included_pages),
+            page_end=max(included_pages),
+            text=entry_text,
+            warnings=warnings,
+            number=number,
+        )
+    ]
 
 
 def passage_around(text: str, start: int, length: int, radius: int = 420) -> str:
@@ -851,9 +1213,11 @@ def passage_around(text: str, start: int, length: int, radius: int = 420) -> str
 def answer_from_hits(question: str, hits: list[SearchHit], sentence_limit: int = 5) -> str:
     sentences: list[tuple[int, str]] = []
     seen: set[str] = set()
-    query_terms = set(tokenize(question))
+    query_terms = set(tokenize(retrieval_query_text(question)))
     for hit in hits:
-        parts = re.split(r"(?<=[.!?।॥])\s+|\n+", hit.text)
+        text = apply_curated_corrections(hit.text)
+        text = re.sub(r"(?<!\n)\n(?!\n)", " ", text)
+        parts = re.split(r"(?<=[.!?।॥])\s+|\n{2,}", text)
         ranked: list[tuple[int, str]] = []
         for part in parts:
             clean = part.strip()
@@ -870,7 +1234,7 @@ def answer_from_hits(question: str, hits: list[SearchHit], sentence_limit: int =
             break
     if not sentences:
         return "No sufficiently grounded answer was found in the indexed PDF passages."
-    lines = ["Grounded answer:"]
+    lines = ["Answer:"]
     for page, sentence in sentences:
         lines.append(f"- {sentence} [p. {page}]")
     return "\n".join(lines)

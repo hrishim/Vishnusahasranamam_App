@@ -3,7 +3,6 @@ const searchButton = document.querySelector("#searchButton");
 const copyButton = document.querySelector("#copyButton");
 const clearButton = document.querySelector("#clearButton");
 const output = document.querySelector("#output");
-const meta = document.querySelector("#meta");
 const status = document.querySelector("#status");
 const helpButton = document.querySelector("#helpButton");
 const helpDialog = document.querySelector("#helpDialog");
@@ -12,46 +11,6 @@ const modeButtons = Array.from(document.querySelectorAll(".mode-button"));
 
 let activeMode = "entry";
 let copyText = "";
-
-function splitMetaLine(line) {
-  const entryMatch = line.match(/^(Entry|Result|Sloka|Match)\s+\d+:\s*/);
-  const label = entryMatch ? entryMatch[0].replace(/:\s*$/, "") : "";
-  const rest = entryMatch ? line.slice(entryMatch[0].length) : line;
-  return {
-    label,
-    parts: rest.split("|").map((part) => part.trim()).filter(Boolean),
-  };
-}
-
-function renderMeta(text) {
-  meta.replaceChildren();
-  const lines = text.split(/\n+/).map((line) => line.trim()).filter(Boolean);
-  if (!lines.length) {
-    return;
-  }
-
-  const fragment = document.createDocumentFragment();
-  lines.forEach((line) => {
-    const row = document.createElement("div");
-    row.className = "meta-row";
-    const { label, parts } = splitMetaLine(line);
-    if (label) {
-      const labelChip = document.createElement("span");
-      labelChip.className = "meta-label";
-      labelChip.textContent = label;
-      row.append(labelChip);
-    }
-    parts.forEach((part) => {
-      const chip = document.createElement("span");
-      const key = part.split(":")[0].trim().toLowerCase();
-      chip.className = `meta-chip ${key === "ocr" ? "ocr-chip" : ""}`.trim();
-      chip.textContent = part;
-      row.append(chip);
-    });
-    fragment.append(row);
-  });
-  meta.append(fragment);
-}
 
 function setStatus(text, copied = false) {
   status.textContent = text;
@@ -77,7 +36,6 @@ async function runSearch() {
 
   setStatus("Searching...");
   output.textContent = "";
-  meta.replaceChildren();
   copyText = "";
 
   try {
@@ -91,7 +49,6 @@ async function runSearch() {
       throw new Error(payload.error || "Search failed");
     }
     output.textContent = payload.display_text || "";
-    renderMeta(payload.meta_text || "");
     copyText = payload.copy_text || "";
     setStatus("Ready");
   } catch (error) {
@@ -118,7 +75,6 @@ async function copyOutput() {
 function clearAll() {
   queryInput.value = "";
   output.textContent = "";
-  meta.replaceChildren();
   copyText = "";
   setStatus("Ready");
   queryInput.focus();
