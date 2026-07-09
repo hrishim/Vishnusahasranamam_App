@@ -1,4 +1,4 @@
-const CACHE_NAME = "vishnusahasranamam-static-pwa-v3";
+const CACHE_NAME = "vishnusahasranamam-static-pwa-v4";
 const APP_SHELL = [
   "./",
   "index.html",
