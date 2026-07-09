@@ -3,6 +3,7 @@ from __future__ import annotations
 import re
 import sys
 import json
+from html import escape
 from dataclasses import dataclass
 from functools import lru_cache
 
@@ -65,6 +66,86 @@ def normalize_for_word(text: str) -> str:
         cleaned.append(line)
         blank = False
     return "\n".join(cleaned).strip()
+
+
+def _has_devanagari(text: str) -> bool:
+    return bool(re.search(r"[\u0900-\u097F]", text))
+
+
+def _looks_like_transliteration(text: str) -> bool:
+    clean = text.strip()
+    english_words = re.compile(
+        r"\b(the|one|who|word|means|lord|being|because|since|therefore|where|when|which|this|that|with|from|into|everything|pervades)\b",
+        re.IGNORECASE,
+    )
+    return bool(re.search(r"[āīūṛṝḷṅñṭḍṇśṣḥṃ]", clean, re.IGNORECASE)) and not english_words.search(clean) and not re.search(r"[.!?]$", clean)
+
+
+def _append_paragraphs(parts: list[str], html_parts: list[str]) -> None:
+    clean = re.sub(r"\s+", " ", " ".join(parts)).strip()
+    if not clean:
+        return
+    sentences = re.findall(r"[^.!?]+[.!?]+(?:\s+|$)|[^.!?]+$", clean) or [clean]
+    current = ""
+    for part in sentences:
+        sentence = part.strip()
+        candidate = f"{current} {sentence}".strip() if current else sentence
+        if current and len(candidate) > 520:
+            html_parts.append(f'<p class="para">{escape(current)}</p>')
+            current = sentence
+        else:
+            current = candidate
+    if current:
+        html_parts.append(f'<p class="para">{escape(current)}</p>')
+
+
+def display_text_to_html(text: str) -> str:
+    html_parts = [
+        """
+        <style>
+          body { color: #18222f; font-family: "Avenir Next", -apple-system, sans-serif; font-size: 16px; line-height: 1.42; }
+          h2 { margin: 0 0 14px; font-size: 19px; font-weight: 700; }
+          h3 { margin: 16px 0 8px; font-size: 17px; font-weight: 700; }
+          p.para { margin: 0 0 12px; }
+          div.script { margin: 0 0 7px; font-family: "Arial Unicode MS", "Devanagari Sangam MN", serif; font-size: 18px; line-height: 1.55; }
+          div.translit { margin: 0 0 7px; color: #425066; font-family: "Arial Unicode MS", serif; font-size: 16px; line-height: 1.38; }
+        </style>
+        """
+    ]
+    paragraph: list[str] = []
+
+    def flush() -> None:
+        nonlocal paragraph
+        _append_paragraphs(paragraph, html_parts)
+        paragraph = []
+
+    for raw_line in str(text or "").replace("\r\n", "\n").split("\n"):
+        line = raw_line.strip()
+        if not line:
+            last = paragraph[-1] if paragraph else ""
+            if last and not re.search(r"[.!?।॥:'”)]$", last):
+                continue
+            flush()
+            continue
+        if re.match(r"^(Entry|Match)\s+\d+\b", line):
+            flush()
+            html_parts.append(f"<h2>{escape(line)}</h2>")
+        elif re.match(r"^(Answer|Śloka)\b", line):
+            flush()
+            html_parts.append(f"<h3>{escape(line)}</h3>")
+        elif line.startswith("- "):
+            flush()
+            html_parts.append(f'<p class="para">• {escape(line[2:].strip())}</p>')
+        elif _has_devanagari(line):
+            flush()
+            html_parts.append(f'<div class="script">{escape(line)}</div>')
+        elif _looks_like_transliteration(line):
+            flush()
+            html_parts.append(f'<div class="translit">{escape(line)}</div>')
+        else:
+            paragraph.append(line)
+    flush()
+    return "\n".join(html_parts)
 
 
 def useful_quality_notes(text: str, warnings: list[str]) -> list[str]:
@@ -455,7 +536,7 @@ def build_window(qt: dict):
             layout.addLayout(mode_row)
 
             self.output = QTextEdit()
-            self.output.setAcceptRichText(False)
+            self.output.setAcceptRichText(True)
             self.output.setReadOnly(True)
             self.output.setLineWrapMode(QTextEdit.LineWrapMode.WidgetWidth)
             self.output.setFont(QFont("Arial Unicode MS", 16))
@@ -596,7 +677,7 @@ def build_window(qt: dict):
                     result = render_answer(query)
             except Exception as exc:  # pragma: no cover - UI safety net
                 result = RenderedResult(f"Error: {exc}", "")
-            self.output.setPlainText(result.display_text)
+            self.output.setHtml(display_text_to_html(result.display_text))
             self.copy_text = result.copy_text
             self.status.setText("Ready")
 
