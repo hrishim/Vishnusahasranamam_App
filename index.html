@@ -20,7 +20,7 @@
           <img class="brand-icon" src="icon.svg" alt="">
           <div>
             <h1>Vishnusahasranamam</h1>
-            <p>Works on iPhone and iPad after first load.</p>
+            <p>Search nāmas, passages, and questions. Results stay local.</p>
           </div>
         </div>
         <button class="ghost-button" id="helpButton" type="button">Help</button>
@@ -29,24 +29,23 @@
       <section class="search-panel" aria-label="Search">
         <div class="query-row">
           <input id="queryInput" autocomplete="off" autocapitalize="none" placeholder="प्राणदः, Madhava, or where do the three Vedas come from">
-          <button class="primary-button" id="searchButton" type="button">Find</button>
+          <button class="primary-button" id="searchButton" type="button">Search</button>
         </div>
 
         <div class="mode-row" role="radiogroup" aria-label="Search mode">
-          <button class="mode-button active" type="button" data-mode="entry" aria-pressed="true">Nāma Search</button>
+          <button class="mode-button active" type="button" data-mode="entry" aria-pressed="true">Nāma</button>
           <button class="mode-button" type="button" data-mode="exact" aria-pressed="false">Exact Text</button>
-          <button class="mode-button" type="button" data-mode="answer" aria-pressed="false">Ask Question</button>
+          <button class="mode-button" type="button" data-mode="answer" aria-pressed="false">Question</button>
         </div>
       </section>
 
       <section class="result-panel" aria-label="Result">
         <pre id="output" class="output" aria-live="polite"></pre>
-        <div id="meta" class="meta"></div>
       </section>
 
       <footer class="actionbar">
-        <button id="copyButton" type="button">Copy Output</button>
-        <button id="clearButton" type="button">Clear Search</button>
+        <button id="copyButton" type="button">Copy</button>
+        <button id="clearButton" type="button">Clear</button>
         <span id="status" class="status">Loading...</span>
       </footer>
     </main>
@@ -54,12 +53,12 @@
     <dialog id="helpDialog" class="help-dialog">
       <h2>Search Options</h2>
       <dl>
-        <dt>Nāma Search</dt>
-        <dd>Best for one of the 1000 names. Type Devanagari or Roman text such as Pranada, Madhava, Hrisikesa.</dd>
+        <dt>Nāma</dt>
+        <dd>Best for one of the 1000 names. It returns the complete verified entry.</dd>
         <dt>Exact Text</dt>
-        <dd>Finds exact Sanskrit or English words in entries and ślokas.</dd>
-        <dt>Ask Question</dt>
-        <dd>Finds likely local passages and gives a short answer only when the match is strong enough.</dd>
+        <dd>Best for an exact Sanskrit or English word or phrase.</dd>
+        <dt>Question</dt>
+        <dd>Best for a simple question. It gives a short answer when the matching passage is strong enough.</dd>
       </dl>
       <button id="closeHelpButton" type="button">Close</button>
     </dialog>

@@ -3,7 +3,6 @@ const searchButton = document.querySelector("#searchButton");
 const copyButton = document.querySelector("#copyButton");
 const clearButton = document.querySelector("#clearButton");
 const output = document.querySelector("#output");
-const meta = document.querySelector("#meta");
 const status = document.querySelector("#status");
 const helpButton = document.querySelector("#helpButton");
 const helpDialog = document.querySelector("#helpDialog");
@@ -126,7 +125,7 @@ function queryTerms(query) {
 
 function answerSearch(query) {
   const terms = queryTerms(query);
-  if (!terms.length) return { display: "I did not find a reliable answer in the indexed text.", copy: "I did not find a reliable answer in the indexed text." };
+  if (!terms.length) return { display: "No clear answer found in this text.", copy: "No clear answer found in this text." };
   const scored = data.passages.map((passage) => {
     const text = latinFold(passage.text);
     let score = 0;
@@ -136,7 +135,7 @@ function answerSearch(query) {
     return { passage, score };
   }).filter((item) => item.score > 0).sort((a, b) => b.score - a.score).slice(0, 3);
   if (!scored.length || scored[0].score < 2) {
-    const message = "I did not find a reliable answer in the indexed text.";
+    const message = "No clear answer found in this text.";
     return { display: message, copy: message };
   }
   const bullets = [];
@@ -158,10 +157,10 @@ function answerSearch(query) {
     if (bullets.length >= 5) break;
   }
   if (!bullets.length) {
-    const message = "I did not find a reliable answer in the indexed text.";
+    const message = "No clear answer found in this text.";
     return { display: message, copy: message };
   }
-  const answer = `Grounded answer:\n${bullets.join("\n")}`;
+  const answer = `Answer:\n${bullets.join("\n")}`;
   return { display: answer, copy: answer };
 }
 
@@ -176,7 +175,6 @@ function runSearch() {
     setStatus("Still loading...");
     return;
   }
-  meta.replaceChildren();
   let result;
   if (activeMode === "entry") result = entrySearch(query);
   else if (activeMode === "exact") result = exactSearch(query);
@@ -202,7 +200,6 @@ async function copyOutput() {
 function clearAll() {
   queryInput.value = "";
   output.textContent = "";
-  meta.replaceChildren();
   copyText = "";
   setStatus("Ready");
   queryInput.focus();
