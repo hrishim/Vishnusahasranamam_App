@@ -440,3 +440,48 @@ body:not(.has-result) .actionbar {
     margin-left: 0;
   }
 }
+
+@media (max-width: 480px) {
+  .app-shell {
+    padding-left: 10px;
+    padding-right: 10px;
+  }
+
+  .topbar {
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 6px;
+  }
+
+  .brand {
+    gap: 7px;
+  }
+
+  h1 {
+    font-size: 15px;
+  }
+
+  .ghost-button {
+    min-width: 42px;
+    padding-left: 8px;
+    padding-right: 8px;
+  }
+
+  .query-row {
+    grid-template-columns: 1fr;
+  }
+
+  .primary-button {
+    width: 100%;
+    min-width: 0;
+  }
+
+  .mode-row {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .mode-button {
+    width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+}
