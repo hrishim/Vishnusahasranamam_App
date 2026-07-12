@@ -296,6 +296,7 @@ function appendParagraphs(text) {
 }
 
 function renderOutput(text) {
+  document.body.classList.toggle("has-result", Boolean(String(text || "").trim()));
   output.textContent = "";
   const lines = String(text || "").replace(/\r\n/g, "\n").split("\n");
   let paragraph = [];
