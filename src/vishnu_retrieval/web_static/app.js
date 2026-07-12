@@ -127,10 +127,12 @@ async function runSearch() {
   copyText = "";
 
   try {
+    const numericSloka = /^\s*[0-9०-९]{1,3}\s*$/.test(query);
+    const mode = numericSloka && activeMode === "exact" ? "sloka" : activeMode;
     const response = await fetch("/api/search", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ query, mode: activeMode }),
+      body: JSON.stringify({ query, mode }),
     });
     const payload = await response.json();
     if (!response.ok) {

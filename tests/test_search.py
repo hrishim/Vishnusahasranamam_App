@@ -191,6 +191,17 @@ def test_sloka_search_accepts_labelled_english_number():
     assert "अपराजितः सर्वसहो नियन्ताऽनियमोऽयमः ॥९२॥" in result.display_text
 
 
+def test_sloka_search_plain_number_78_returns_only_sloka_78():
+    result = render_sloka("78")
+
+    assert "Sloka 1" in result.display_text
+    assert "एको नैकः सवः कः किं यत् तत्पदमनुत्तमम् ।" in result.display_text
+    assert "लोकबन्धुर्लोकनाथो माधवो भक्तवत्सलः ॥७८॥" in result.display_text
+    assert "॥१७८॥" not in result.display_text
+    assert "॥२७८॥" not in result.display_text
+    assert "Nama: 78" not in result.display_text
+
+
 def test_maha_garta_and_maha_bhuta_headings_are_restored():
     garta = render_entry("महागर्तः")
     bhuta = render_entry("महाभूतः")

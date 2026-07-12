@@ -32,6 +32,9 @@ Best for one of the 1000 names. Type Devanagari or Roman text such as प्र�
 Exact Text
 Best for an exact Sanskrit or English word or phrase. It shows the direct passage and the containing śloka when available.
 
+Śloka
+Best for a śloka number from 1 to 108. Type 78 or śloka 78.
+
 Question
 Best for a simple question. It gives a short answer only when the matching passage is strong enough.
 
@@ -520,11 +523,12 @@ def build_window(qt: dict):
             mode_row.setSpacing(16)
             self.mode_group = QButtonGroup(self)
             self.entry_mode = QPushButton("Nāma")
+            self.sloka_mode = QPushButton("Śloka")
             self.exact_mode = QPushButton("Exact Text")
             self.answer_mode = QPushButton("Question")
             self.help_button = QPushButton("Help")
             self.mode_group.setExclusive(True)
-            for button in (self.entry_mode, self.exact_mode, self.answer_mode):
+            for button in (self.entry_mode, self.sloka_mode, self.exact_mode, self.answer_mode):
                 button.setCheckable(True)
                 button.setObjectName("modeButton")
                 self.mode_group.addButton(button)
@@ -671,8 +675,10 @@ def build_window(qt: dict):
             try:
                 if self.entry_mode.isChecked():
                     result = render_entry(query)
+                elif self.sloka_mode.isChecked():
+                    result = render_sloka(query)
                 elif self.exact_mode.isChecked():
-                    result = render_exact(query)
+                    result = render_sloka(query) if re.fullmatch(r"\s*[0-9०-९]{1,3}\s*", query) else render_exact(query)
                 else:
                     result = render_answer(query)
             except Exception as exc:  # pragma: no cover - UI safety net

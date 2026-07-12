@@ -128,6 +128,7 @@ INDEX_HTML = """<!doctype html>
 
         <div class="mode-row" role="radiogroup" aria-label="Search mode">
           <button class="mode-button active" type="button" data-mode="entry" aria-pressed="true">Nāma</button>
+          <button class="mode-button" type="button" data-mode="sloka" aria-pressed="false">Śloka</button>
           <button class="mode-button" type="button" data-mode="exact" aria-pressed="false">Exact Text</button>
           <button class="mode-button" type="button" data-mode="answer" aria-pressed="false">Question</button>
         </div>
@@ -149,6 +150,8 @@ INDEX_HTML = """<!doctype html>
       <dl>
         <dt>Nāma</dt>
         <dd>Best for one of the 1000 names. It returns the complete verified entry.</dd>
+        <dt>Śloka</dt>
+        <dd>Best for a śloka number from 1 to 108. Type 78 or śloka 78.</dd>
         <dt>Exact Text</dt>
         <dd>Best for an exact Sanskrit or English word or phrase.</dd>
         <dt>Question</dt>
@@ -202,6 +205,26 @@ function devKey(text) {
 
 function tokens(text) {
   return latinFold(text).match(/[a-z0-9\u0900-\u097F]+/g) || [];
+}
+
+function parseSlokaNumber(query) {
+  const devanagariDigits = "०१२३४५६७८९";
+  const normalized = query.trim().replace(/[०-९]/g, (digit) => String(devanagariDigits.indexOf(digit)));
+  const patterns = [
+    /^([0-9]{1,3})$/,
+    /^(?:sloka|shloka|śloka|verse|श्लोक|श्लोका)\s*[:#.\-]?\s*([0-9]{1,3})$/i,
+    /^([0-9]{1,3})\s*(?:sloka|shloka|śloka|verse|श्लोक|श्लोका)$/i,
+  ];
+  for (const pattern of patterns) {
+    const match = normalized.match(pattern);
+    if (match) {
+      const number = Number(match[1]);
+      if (Number.isInteger(number) && number >= 1 && number <= 108) {
+        return number;
+      }
+    }
+  }
+  return null;
 }
 
 function buildMaps() {
@@ -338,7 +361,34 @@ function entrySearch(query) {
   return { display: sections.join("\n\n"), copy: copies.join("\n\n") };
 }
 
+function slokaSearch(query) {
+  const number = parseSlokaNumber(query);
+  if (number !== null) {
+    const sloka = data.slokas.find((item) => item.number === number);
+    if (!sloka) return { display: "No śloka found.", copy: "" };
+    return { display: `Śloka ${sloka.number}\n\n${sloka.text}`, copy: sloka.text };
+  }
+  const needle = query.trim().toLowerCase();
+  const foldedNeedle = latinFold(query.trim());
+  const hits = [];
+  for (const sloka of data.slokas) {
+    if (sloka.text.toLowerCase().includes(needle) || latinFold(sloka.text).includes(foldedNeedle)) {
+      hits.push(sloka);
+    }
+    if (hits.length >= 10) break;
+  }
+  if (!hits.length) return { display: "No śloka found.", copy: "" };
+  return {
+    display: hits.map((sloka) => `Śloka ${sloka.number}\n\n${sloka.text}`).join("\n\n"),
+    copy: hits.map((sloka) => sloka.text).join("\n\n"),
+  };
+}
+
 function exactSearch(query) {
+  const slokaNumber = parseSlokaNumber(query);
+  if (slokaNumber !== null) {
+    return slokaSearch(String(slokaNumber));
+  }
   const needle = query.trim().toLowerCase();
   const foldedNeedle = latinFold(query.trim());
   const sections = [];
@@ -430,6 +480,7 @@ function runSearch() {
   }
   let result;
   if (activeMode === "entry") result = entrySearch(query);
+  else if (activeMode === "sloka") result = slokaSearch(query);
   else if (activeMode === "exact") result = exactSearch(query);
   else result = answerSearch(query);
   renderOutput(result.display);
