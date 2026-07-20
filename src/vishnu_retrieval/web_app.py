@@ -10,7 +10,7 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from urllib.parse import unquote, urlparse
 
-from .desktop_app import render_answer, render_entry, render_exact, render_hybrid, render_sloka
+from .desktop_app import render_answer, render_entry, render_hybrid, render_sloka
 
 
 STATIC_DIR = Path(__file__).with_name("web_static")
@@ -20,8 +20,6 @@ def render_search(mode: str, query: str) -> dict[str, str]:
     mode = mode.strip().casefold()
     if mode == "entry":
         result = render_entry(query)
-    elif mode == "exact":
-        result = render_exact(query)
     elif mode == "sloka":
         result = render_sloka(query)
     elif mode == "hybrid":

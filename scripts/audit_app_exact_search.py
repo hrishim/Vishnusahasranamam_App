@@ -144,9 +144,9 @@ def main() -> int:
             )
 
     lines: list[str] = [
-        "# Mac App Exact Text Audit",
+        "# Internal Exact Text Audit",
         "",
-        "This calls the same Exact Text rendering path used by the Mac app.",
+        "This calls the internal exact rendering path. The polished app does not expose this mode.",
         "",
         f"Canonical namas checked: {len(load_canonical_namas())}",
         f"Queries checked: {len(audits)}",

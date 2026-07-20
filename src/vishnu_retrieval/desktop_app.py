@@ -26,11 +26,8 @@ from .search import (
 
 
 APP_TITLE = "Vishnusahasranamam"
-HELP_TEXT = """Nāma Search
+HELP_TEXT = """Nāma
 Best for one of the 1000 names. Type Devanagari or Roman text such as प्राणदः, Madhava, or Hrisikesa. It returns the complete verified entry.
-
-Exact Text
-Best for an exact Sanskrit or English word or phrase. It shows the direct passage and the containing śloka when available.
 
 Śloka
 Best for a śloka number from 1 to 108. Type 78 or śloka 78.
@@ -503,7 +500,7 @@ def build_window(qt: dict):
             title_stack.setSpacing(2)
             title = QLabel("Vishnusahasranamam")
             title.setObjectName("title")
-            subtitle = QLabel("Search the nāmas, exact passages, and short questions. Results stay local.")
+            subtitle = QLabel("Search the nāmas, ślokas, and short questions. Results stay local.")
             subtitle.setObjectName("subtitle")
             title_stack.addWidget(title)
             title_stack.addWidget(subtitle)
@@ -529,11 +526,10 @@ def build_window(qt: dict):
             self.mode_group = QButtonGroup(self)
             self.entry_mode = QPushButton("Nāma")
             self.sloka_mode = QPushButton("Śloka")
-            self.exact_mode = QPushButton("Exact Text")
             self.answer_mode = QPushButton("Question")
             self.help_button = QPushButton("Help")
             self.mode_group.setExclusive(True)
-            for button in (self.entry_mode, self.sloka_mode, self.exact_mode, self.answer_mode):
+            for button in (self.entry_mode, self.sloka_mode, self.answer_mode):
                 button.setCheckable(True)
                 button.setObjectName("modeButton")
                 self.mode_group.addButton(button)
@@ -682,8 +678,6 @@ def build_window(qt: dict):
                     result = render_entry(query)
                 elif self.sloka_mode.isChecked():
                     result = render_sloka(query)
-                elif self.exact_mode.isChecked():
-                    result = render_sloka(query) if re.fullmatch(r"\s*[0-9०-९]{1,3}\s*", query) else render_exact(query)
                 else:
                     result = render_answer(query)
             except Exception as exc:  # pragma: no cover - UI safety net

@@ -129,7 +129,6 @@ INDEX_HTML = """<!doctype html>
         <div class="mode-row" role="radiogroup" aria-label="Search mode">
           <button class="mode-button active" type="button" data-mode="entry" aria-pressed="true">Nāma</button>
           <button class="mode-button" type="button" data-mode="sloka" aria-pressed="false">Śloka</button>
-          <button class="mode-button" type="button" data-mode="exact" aria-pressed="false">Exact Text</button>
           <button class="mode-button" type="button" data-mode="answer" aria-pressed="false">Question</button>
         </div>
       </section>
@@ -152,8 +151,6 @@ INDEX_HTML = """<!doctype html>
         <dd>Best for one of the 1000 names. It returns the complete verified entry.</dd>
         <dt>Śloka</dt>
         <dd>Best for a śloka number from 1 to 108. Type 78 or śloka 78.</dd>
-        <dt>Exact Text</dt>
-        <dd>Best for an exact Sanskrit or English word or phrase.</dd>
         <dt>Question</dt>
         <dd>Best for a simple question. It gives a short answer when the matching passage is strong enough.</dd>
       </dl>
@@ -485,7 +482,6 @@ function runSearch() {
   let result;
   if (activeMode === "entry") result = entrySearch(query);
   else if (activeMode === "sloka") result = slokaSearch(query);
-  else if (activeMode === "exact") result = exactSearch(query);
   else result = answerSearch(query);
   renderOutput(result.display);
   copyText = result.copy;
