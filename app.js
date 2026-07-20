@@ -317,7 +317,6 @@ function runSearch() {
   let result;
   if (activeMode === "entry") result = entrySearch(query);
   else if (activeMode === "sloka") result = slokaSearch(query);
-  else if (activeMode === "exact") result = exactSearch(query);
   else result = answerSearch(query);
   renderOutput(result.display);
   copyText = result.copy;
