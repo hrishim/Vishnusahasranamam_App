@@ -385,35 +385,6 @@ function slokaSearch(query) {
   };
 }
 
-function exactSearch(query) {
-  const slokaNumber = parseSlokaNumber(query);
-  if (slokaNumber !== null) {
-    return slokaSearch(String(slokaNumber));
-  }
-  const needle = query.trim().toLowerCase();
-  const foldedNeedle = latinFold(query.trim());
-  const sections = [];
-  const copies = [];
-  for (const entry of data.entries) {
-    if (entry.text.toLowerCase().includes(needle) || latinFold(entry.text).includes(foldedNeedle)) {
-      sections.push(`Match ${sections.length + 1} - Nama: ${entry.number}\n\n${entry.text}`);
-      copies.push(entry.text);
-    }
-    if (sections.length >= 10) break;
-  }
-  if (sections.length < 10) {
-    for (const sloka of data.slokas) {
-      if (sloka.text.toLowerCase().includes(needle) || latinFold(sloka.text).includes(foldedNeedle)) {
-        sections.push(`Match ${sections.length + 1} - Śloka ${sloka.number}\n\n${sloka.text}`);
-        copies.push(sloka.text);
-      }
-      if (sections.length >= 10) break;
-    }
-  }
-  if (!sections.length) return { display: "No exact matches found.", copy: "" };
-  return { display: sections.join("\n\n"), copy: copies.join("\n\n") };
-}
-
 const instructionWords = new Set(["a", "an", "and", "are", "come", "comes", "define", "describe", "do", "does", "explain", "for", "from", "give", "how", "in", "is", "meaning", "of", "on", "please", "show", "tell", "the", "this", "to", "what", "where"]);
 const expansions = { bagha: ["bhaga", "virtues", "six", "fold"], bhaga: ["virtues", "six", "fold"], vedas: ["veda", "trayi", "pranava"] };
 
@@ -471,7 +442,7 @@ function answerSearch(query) {
 function runSearch() {
   const query = queryInput.value.trim();
   if (!query) {
-    setStatus("Type a nāma, exact phrase, or question first");
+    setStatus("Type a nāma, śloka, or question first");
     queryInput.focus();
     return;
   }
@@ -525,7 +496,7 @@ loadData().catch((error) => {
 """
 
 
-SERVICE_WORKER = """const CACHE_NAME = "vishnusahasranamam-static-pwa-v8";
+SERVICE_WORKER = """const CACHE_NAME = "vishnusahasranamam-static-pwa-v9";
 const APP_SHELL = [
   "./",
   "index.html",
