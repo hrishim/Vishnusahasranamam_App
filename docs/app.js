@@ -8,6 +8,7 @@ const helpButton = document.querySelector("#helpButton");
 const helpDialog = document.querySelector("#helpDialog");
 const closeHelpButton = document.querySelector("#closeHelpButton");
 const modeButtons = Array.from(document.querySelectorAll(".mode-button"));
+const APP_VERSION = "v11";
 
 let activeMode = "entry";
 let copyText = "";
@@ -95,7 +96,7 @@ function buildMaps() {
 }
 
 async function loadData() {
-  const response = await fetch("data/search-data.json");
+  const response = await fetch(`data/search-data.json?${APP_VERSION}`, { cache: "reload" });
   data = await response.json();
   buildMaps();
   setStatus("Ready");
@@ -349,7 +350,7 @@ clearButton.addEventListener("click", clearAll);
 helpButton.addEventListener("click", () => helpDialog.showModal());
 closeHelpButton.addEventListener("click", () => helpDialog.close());
 
-if ("serviceWorker" in navigator) navigator.serviceWorker.register("service-worker.js").catch(() => {});
+if ("serviceWorker" in navigator) navigator.serviceWorker.register(`service-worker.js?${APP_VERSION}`).catch(() => {});
 loadData().catch((error) => {
   renderOutput(`Could not load app data: ${error.message}`);
   setStatus("Error");

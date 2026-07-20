@@ -1,12 +1,12 @@
-const CACHE_NAME = "vishnusahasranamam-static-pwa-v10";
+const CACHE_NAME = "vishnusahasranamam-static-pwa-v11";
 const APP_SHELL = [
   "./",
   "index.html",
-  "styles.css",
-  "app.js",
-  "manifest.webmanifest",
+  "styles.css?v=11",
+  "app.js?v=11",
+  "manifest.webmanifest?v=11",
   "icon.svg",
-  "data/search-data.json",
+  "data/search-data.json?v=11",
 ];
 
 self.addEventListener("install", (event) => {
@@ -24,5 +24,24 @@ self.addEventListener("activate", (event) => {
 });
 
 self.addEventListener("fetch", (event) => {
+  const url = new URL(event.request.url);
+  const networkFirst =
+    event.request.mode === "navigate" ||
+    url.pathname.endsWith("/index.html") ||
+    url.pathname.endsWith("/app.js") ||
+    url.pathname.endsWith("/service-worker.js") ||
+    url.pathname.endsWith("/data/search-data.json");
+  if (networkFirst) {
+    event.respondWith(
+      fetch(event.request)
+        .then((response) => {
+          const copy = response.clone();
+          caches.open(CACHE_NAME).then((cache) => cache.put(event.request, copy));
+          return response;
+        })
+        .catch(() => caches.match(event.request)),
+    );
+    return;
+  }
   event.respondWith(caches.match(event.request).then((cached) => cached || fetch(event.request)));
 });

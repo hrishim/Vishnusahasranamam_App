@@ -15,6 +15,7 @@ from vishnu_retrieval.search import canonical_alias_keys, extract_entry_by_numbe
 ROOT = Path(__file__).resolve().parents[1]
 OUT = ROOT / "dist" / "pwa"
 STATIC = ROOT / "src" / "vishnu_retrieval" / "web_static"
+APP_VERSION = "v11"
 
 
 def strip_page_refs(text: str) -> str:
@@ -102,10 +103,10 @@ INDEX_HTML = """<!doctype html>
     <meta name="apple-mobile-web-app-title" content="Vishnu">
     <meta name="apple-mobile-web-app-status-bar-style" content="default">
     <title>Vishnusahasranamam</title>
-    <link rel="manifest" href="manifest.webmanifest">
+    <link rel="manifest" href="manifest.webmanifest?v=11">
     <link rel="icon" href="icon.svg" type="image/svg+xml">
     <link rel="apple-touch-icon" href="icon.svg">
-    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="styles.css?v=11">
   </head>
   <body>
     <main class="app-shell">
@@ -157,7 +158,7 @@ INDEX_HTML = """<!doctype html>
       <button id="closeHelpButton" type="button">Close</button>
     </dialog>
 
-    <script src="app.js"></script>
+    <script src="app.js?v=11"></script>
   </body>
 </html>
 """
@@ -173,6 +174,7 @@ const helpButton = document.querySelector("#helpButton");
 const helpDialog = document.querySelector("#helpDialog");
 const closeHelpButton = document.querySelector("#closeHelpButton");
 const modeButtons = Array.from(document.querySelectorAll(".mode-button"));
+const APP_VERSION = "v11";
 
 let activeMode = "entry";
 let copyText = "";
@@ -260,7 +262,7 @@ function buildMaps() {
 }
 
 async function loadData() {
-  const response = await fetch("data/search-data.json");
+  const response = await fetch(`data/search-data.json?${APP_VERSION}`, { cache: "reload" });
   data = await response.json();
   buildMaps();
   setStatus("Ready");
@@ -514,7 +516,7 @@ clearButton.addEventListener("click", clearAll);
 helpButton.addEventListener("click", () => helpDialog.showModal());
 closeHelpButton.addEventListener("click", () => helpDialog.close());
 
-if ("serviceWorker" in navigator) navigator.serviceWorker.register("service-worker.js").catch(() => {});
+if ("serviceWorker" in navigator) navigator.serviceWorker.register(`service-worker.js?${APP_VERSION}`).catch(() => {});
 loadData().catch((error) => {
   renderOutput(`Could not load app data: ${error.message}`);
   setStatus("Error");
@@ -522,15 +524,15 @@ loadData().catch((error) => {
 """
 
 
-SERVICE_WORKER = """const CACHE_NAME = "vishnusahasranamam-static-pwa-v10";
+SERVICE_WORKER = """const CACHE_NAME = "vishnusahasranamam-static-pwa-v11";
 const APP_SHELL = [
   "./",
   "index.html",
-  "styles.css",
-  "app.js",
-  "manifest.webmanifest",
+  "styles.css?v=11",
+  "app.js?v=11",
+  "manifest.webmanifest?v=11",
   "icon.svg",
-  "data/search-data.json",
+  "data/search-data.json?v=11",
 ];
 
 self.addEventListener("install", (event) => {
@@ -548,6 +550,25 @@ self.addEventListener("activate", (event) => {
 });
 
 self.addEventListener("fetch", (event) => {
+  const url = new URL(event.request.url);
+  const networkFirst =
+    event.request.mode === "navigate" ||
+    url.pathname.endsWith("/index.html") ||
+    url.pathname.endsWith("/app.js") ||
+    url.pathname.endsWith("/service-worker.js") ||
+    url.pathname.endsWith("/data/search-data.json");
+  if (networkFirst) {
+    event.respondWith(
+      fetch(event.request)
+        .then((response) => {
+          const copy = response.clone();
+          caches.open(CACHE_NAME).then((cache) => cache.put(event.request, copy));
+          return response;
+        })
+        .catch(() => caches.match(event.request)),
+    );
+    return;
+  }
   event.respondWith(caches.match(event.request).then((cached) => cached || fetch(event.request)));
 });
 """
