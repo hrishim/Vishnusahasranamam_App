@@ -59,6 +59,26 @@ function parseSlokaNumber(query) {
   return null;
 }
 
+function parseNamaNumber(query) {
+  const devanagariDigits = "०१२३४५६७८९";
+  const normalized = query.trim().replace(/[०-९]/g, (digit) => String(devanagariDigits.indexOf(digit)));
+  const patterns = [
+    /^([0-9]{1,4})$/,
+    /^(?:nama|naama|nāma|name|नाम|नामा)\s*[:#.\-]?\s*([0-9]{1,4})$/i,
+    /^([0-9]{1,4})\s*(?:nama|naama|nāma|name|नाम|नामा)$/i,
+  ];
+  for (const pattern of patterns) {
+    const match = normalized.match(pattern);
+    if (match) {
+      const number = Number(match[1]);
+      if (Number.isInteger(number) && number >= 1 && number <= 1000) {
+        return number;
+      }
+    }
+  }
+  return null;
+}
+
 function buildMaps() {
   devMap = new Map();
   romanMap = new Map();
@@ -183,6 +203,12 @@ function renderOutput(text) {
 }
 
 function entrySearch(query) {
+  const number = parseNamaNumber(query);
+  if (number !== null) {
+    const entry = data.entries.find((item) => item.number === number);
+    if (!entry) return { display: "No nāma entry found.", copy: "" };
+    return { display: `Entry 1 - Nama: ${entry.number}\n\n${entry.text}`, copy: entry.text };
+  }
   const dk = devKey(query);
   const rk = romanKey(query);
   let hits = [];
