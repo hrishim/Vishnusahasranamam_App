@@ -86,6 +86,7 @@ class SlokaHit:
     page: int
     text: str
     warnings: list[str]
+    number: int | None = None
 
 
 @dataclass
@@ -750,9 +751,9 @@ def sloka_hit_for_number(number: int, pages_jsonl: Path = PAGES_JSONL) -> SlokaH
     matching_events = [event for event in sloka_events(str(pages_jsonl)) if event.number == number]
     if matching_events:
         event = matching_events[0]
-        return SlokaHit(page=event.page, text=record.text, warnings=event.warnings)
+        return SlokaHit(page=event.page, text=record.text, warnings=event.warnings, number=number)
     override_page = SLOKA_PAGE_OVERRIDES.get(number, 0)
-    return SlokaHit(page=override_page, text=record.text, warnings=[])
+    return SlokaHit(page=override_page, text=record.text, warnings=[], number=number)
 
 
 @lru_cache(maxsize=8)
@@ -1003,9 +1004,18 @@ def preceding_sloka_for_entry(entry: EntryHit, pages_jsonl: Path = PAGES_JSONL) 
                 if candidate_page.page == page.page and start > heading_at:
                     continue
                 if heading_sanskrit and sloka_matches_headword(block, heading_sanskrit, heading_roman):
+                    clean_sloka = clean_sloka_for_local_block(block)
                     matched_blocks.append(
-                        (distance, max(0, heading_at - end) if candidate_page.page == page.page else 0,
-                         SlokaHit(page=candidate_page.page, text=block, warnings=candidate_page.warnings))
+                        (
+                            distance,
+                            max(0, heading_at - end) if candidate_page.page == page.page else 0,
+                            SlokaHit(
+                                page=candidate_page.page,
+                                text=block,
+                                warnings=candidate_page.warnings,
+                                number=clean_sloka.number if clean_sloka else None,
+                            ),
+                        )
                     )
         if matched_blocks:
             return sorted(matched_blocks, key=lambda item: (item[0], item[1]))[0][2]
@@ -1017,14 +1027,26 @@ def preceding_sloka_for_entry(entry: EntryHit, pages_jsonl: Path = PAGES_JSONL) 
         ]
         if prior_blocks:
             _, _, block = prior_blocks[-1]
-            return SlokaHit(page=page.page, text=block, warnings=page.warnings)
+            clean_sloka = clean_sloka_for_local_block(block)
+            return SlokaHit(
+                page=page.page,
+                text=block,
+                warnings=page.warnings,
+                number=clean_sloka.number if clean_sloka else None,
+            )
 
         if idx > 0:
             previous_page = pages[idx - 1]
             previous_blocks = sloka_blocks(normalize_text(previous_page.text))
             if previous_blocks:
                 _, _, block = previous_blocks[-1]
-                return SlokaHit(page=previous_page.page, text=block, warnings=previous_page.warnings)
+                clean_sloka = clean_sloka_for_local_block(block)
+                return SlokaHit(
+                    page=previous_page.page,
+                    text=block,
+                    warnings=previous_page.warnings,
+                    number=clean_sloka.number if clean_sloka else None,
+                )
         return None
     return None
 

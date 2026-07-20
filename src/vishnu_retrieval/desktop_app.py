@@ -376,7 +376,8 @@ def render_sloka(query: str) -> RenderedResult:
     copy_sections: list[str] = []
     for i, hit in enumerate(hits[:10], start=1):
         body = normalize_for_word(hit.text)
-        sections.append(f"Sloka {i}\n\n{body}")
+        label = hit.number if hit.number is not None else i
+        sections.append(f"Sloka {label}\n\n{body}")
         copy_sections.append(body)
     return RenderedResult("\n\n".join(sections), "\n\n".join(copy_sections))
 

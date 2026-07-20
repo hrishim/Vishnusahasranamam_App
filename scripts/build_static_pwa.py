@@ -525,7 +525,7 @@ loadData().catch((error) => {
 """
 
 
-SERVICE_WORKER = """const CACHE_NAME = "vishnusahasranamam-static-pwa-v5";
+SERVICE_WORKER = """const CACHE_NAME = "vishnusahasranamam-static-pwa-v8";
 const APP_SHELL = [
   "./",
   "index.html",
