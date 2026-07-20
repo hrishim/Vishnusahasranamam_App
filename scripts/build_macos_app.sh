@@ -11,6 +11,7 @@ cd "$ROOT_DIR"
 "$ROOT_DIR/.venv/bin/python" "$ROOT_DIR/scripts/build_derivation_overrides.py"
 "$ROOT_DIR/.venv/bin/python" "$ROOT_DIR/scripts/audit_rendered_entries_quality.py"
 "$ROOT_DIR/.venv/bin/python" "$ROOT_DIR/scripts/audit_rendered_text_defects.py"
+"$ROOT_DIR/.venv/bin/python" "$ROOT_DIR/scripts/audit_rendered_formatting.py"
 "$ROOT_DIR/.venv/bin/python" -m pytest \
   "$ROOT_DIR/tests/test_canonical_namas.py" \
   "$ROOT_DIR/tests/test_textutil.py" \
@@ -33,6 +34,8 @@ cd "$ROOT_DIR"
   --hidden-import PySide6.QtGui \
   --hidden-import PySide6.QtWidgets \
   --hidden-import shiboken6 \
+  --exclude-module PySide6.QtNetwork \
+  --exclude-module PySide6.QtNetworkAuth \
   --exclude-module tkinter \
   --exclude-module matplotlib \
   --exclude-module pandas \

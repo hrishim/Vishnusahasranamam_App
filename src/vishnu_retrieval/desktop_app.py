@@ -78,10 +78,15 @@ def _has_devanagari(text: str) -> bool:
 def _looks_like_transliteration(text: str) -> bool:
     clean = text.strip()
     english_words = re.compile(
-        r"\b(the|one|who|word|means|lord|being|because|since|therefore|where|when|which|this|that|with|from|into|everything|pervades)\b",
+        r"\b(the|one|who|word|means|lord|being|because|since|therefore|where|when|which|this|that|with|from|into|everything|pervades|if|then|does|not|know|knows|himself|herself|continues|form|other|until|every|all|called|there|are|is|as|it|he|she|you|we|they|their|his|her|in|of|and|or|to|by|for|on|basis|few|verses)\b",
         re.IGNORECASE,
     )
-    return bool(re.search(r"[āīūṛṝḷṅñṭḍṇśṣḥṃ]", clean, re.IGNORECASE)) and not english_words.search(clean) and not re.search(r"[.!?]$", clean)
+    if english_words.search(clean):
+        return False
+    words = re.findall(r"[A-Za-zāīūṛṝḷṅñṭḍṇśṣḥṃĀĪŪṚṜḶṄÑṬḌṆŚṢḤ]+", clean)
+    if len(words) > 9:
+        return False
+    return bool(re.search(r"[āīūṛṝḷṅñṭḍṇśṣḥṃ]", clean, re.IGNORECASE)) and not re.search(r"[.!?]$", clean)
 
 
 def _append_paragraphs(parts: list[str], html_parts: list[str]) -> None:
@@ -684,6 +689,7 @@ def build_window(qt: dict):
             except Exception as exc:  # pragma: no cover - UI safety net
                 result = RenderedResult(f"Error: {exc}", "")
             self.output.setHtml(display_text_to_html(result.display_text))
+            self.output.verticalScrollBar().setValue(0)
             self.copy_text = result.copy_text
             self.status.setText("Ready")
 

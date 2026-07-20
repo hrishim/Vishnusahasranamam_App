@@ -32,8 +32,11 @@ function hasDevanagari(text) {
 
 function looksLikeTransliteration(text) {
   const clean = text.trim();
-  const englishWords = /\b(the|one|who|word|means|lord|being|because|since|therefore|where|when|which|this|that|with|from|into|everything|pervades)\b/i;
-  return /[āīūṛṝḷṅñṭḍṇśṣḥṃ]/i.test(clean) && !englishWords.test(clean) && !/[.!?]$/.test(clean);
+  const englishWords = /\b(the|one|who|word|means|lord|being|because|since|therefore|where|when|which|this|that|with|from|into|everything|pervades|if|then|does|not|know|knows|himself|herself|continues|form|other|until|every|all|called|there|are|is|as|it|he|she|you|we|they|their|his|her|in|of|and|or|to|by|for|on|basis|few|verses)\b/i;
+  if (englishWords.test(clean)) return false;
+  const words = clean.match(/[A-Za-zāīūṛṝḷṅñṭḍṇśṣḥṃĀĪŪṚṜḶṄÑṬḌṆŚṢḤ]+/g) || [];
+  if (words.length > 9) return false;
+  return /[āīūṛṝḷṅñṭḍṇśṣḥṃ]/i.test(clean) && !/[.!?]$/.test(clean);
 }
 
 function makeTextNode(tag, className, text) {

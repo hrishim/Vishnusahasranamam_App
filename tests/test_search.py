@@ -258,7 +258,45 @@ def test_anirvinna_query_filters_out_prior_entry_and_uses_sloka_47():
     assert "महाधनः Mahadhanaḥ" not in result.display_text
     assert "विस्तारः स्थावरस्थाणुः प्रमाणं बीजमव्ययम् ।" not in result.display_text
     assert "अनिर्विण्णः स्थविष्ठोऽभूर्धर्मयूपो महामखः ।" in sloka.display_text
-    assert "विस्तारः स्थावरस्थाणुः प्रमाणं बीजमव्ययम् ।" not in sloka.display_text
+
+
+def test_narayana_entry_has_no_known_ocr_artifacts():
+    result = render_entry("Narayana")
+    text = result.display_text
+
+    assert "नारायणः (245)" in text
+    assert "Axt:" not in text
+    assert "aṣṭā ṣara" not in text
+    assert "does not now" not in text
+    assert "Nārāyana" not in text
+    assert "ākāṣa" not in text
+    assert "Śa ara" not in text
+    assert "नािायण" not in text
+    assert "aṣṭākṣara-mantra" in text
+    assert "does not know" in text
+    assert "Nārāyaṇa" in text
+    assert "ākāśa" in text
+    assert "Śaṅkara" in text
+
+
+def test_krishna_vyasa_entry_has_no_known_ocr_artifacts():
+    result = render_entry("550")
+    text = result.display_text
+
+    assert "कृष्णः" in text
+    assert "This kind of special manifestation is known as amśa-avatāra." in text
+    assert "the Purāṇas" in text
+    assert "Viṣṇupurāṇa" in text
+    assert "‘Know Vyāsa" in text
+    assert "Puṇḍarīkākṣa" in text
+    assert "Vyāsa’s" in text
+    assert "re-establish" in text
+    assert "कृ ष्णेः" not in text
+    assert "This ind of" not in text
+    assert "the urāṇas" not in text
+    assert "Viṣִִṇupurāִṇa" not in text
+    assert "‘ now Vyāsa" not in text
+    assert "Puṇḍar ā ṣa" not in text
 
 
 def test_anila_repeated_entries_use_slokas_25_and_87_not_86():
