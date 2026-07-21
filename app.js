@@ -8,13 +8,17 @@ const helpButton = document.querySelector("#helpButton");
 const helpDialog = document.querySelector("#helpDialog");
 const closeHelpButton = document.querySelector("#closeHelpButton");
 const modeButtons = Array.from(document.querySelectorAll(".mode-button"));
-const APP_VERSION = "v14";
+const namaList = document.querySelector("#namaList");
+const namaCount = document.querySelector("#namaCount");
+const namaFilter = document.querySelector("#namaFilter");
+const APP_VERSION = "v15";
 
 let activeMode = "entry";
 let copyText = "";
 let data = null;
 let devMap = new Map();
 let romanMap = new Map();
+let selectedNamaNumber = null;
 
 function setStatus(text, copied = false) {
   status.textContent = text;
@@ -95,10 +99,72 @@ function buildMaps() {
   }
 }
 
+function setSelectedNama(number) {
+  selectedNamaNumber = number;
+  if (!namaList) return;
+  for (const button of namaList.querySelectorAll(".nama-list-item")) {
+    const selected = Number(button.dataset.number) === number;
+    button.classList.toggle("active", selected);
+    button.setAttribute("aria-selected", selected ? "true" : "false");
+  }
+}
+
+function renderNamaList() {
+  if (!namaList || !data) return;
+  namaList.textContent = "";
+  const filterText = namaFilter ? namaFilter.value.trim() : "";
+  const filterNumber = filterText.replace(/\D+/g, "");
+  const filterDevanagari = devKey(filterText);
+  const entries = [...data.entries].sort((left, right) => left.number - right.number);
+  const visibleEntries = entries.filter((entry) => {
+    if (filterNumber && !String(entry.number).startsWith(filterNumber)) return false;
+    if (filterDevanagari && !entry.devanagari.includes(filterDevanagari)) return false;
+    return true;
+  });
+  for (const entry of visibleEntries) {
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = "nama-list-item";
+    button.dataset.number = String(entry.number);
+    button.setAttribute("role", "option");
+    button.setAttribute("aria-selected", "false");
+
+    const number = document.createElement("span");
+    number.className = "nama-number";
+    number.textContent = String(entry.number);
+
+    const name = document.createElement("span");
+    name.className = "nama-name";
+    name.textContent = entry.devanagari;
+
+    button.append(number, name);
+    button.addEventListener("click", () => openNama(entry.number));
+    namaList.appendChild(button);
+  }
+  namaCount.textContent = filterText ? `${visibleEntries.length}/1000` : `${entries.length}/1000`;
+  if (entries.length !== 1000) {
+    namaCount.classList.add("warning");
+    setStatus("Nāma list incomplete");
+  }
+  setSelectedNama(selectedNamaNumber);
+}
+
+function openNama(number) {
+  if (!data) return;
+  setMode("entry");
+  queryInput.value = `nāma ${number}`;
+  const result = entrySearch(String(number));
+  renderOutput(result.display);
+  copyText = result.copy;
+  setSelectedNama(number);
+  setStatus(`Nāma ${number}`);
+}
+
 async function loadData() {
   const response = await fetch(`data/search-data.json?${APP_VERSION}`, { cache: "reload" });
   data = await response.json();
   buildMaps();
+  renderNamaList();
   setStatus("Ready");
 }
 
@@ -264,6 +330,7 @@ function runSearch() {
   else result = entrySearch(query);
   renderOutput(result.display);
   copyText = result.copy;
+  setSelectedNama(activeMode === "entry" ? parseNamaNumber(query) : null);
   setStatus("Ready");
 }
 
@@ -284,6 +351,7 @@ function clearAll() {
   queryInput.value = "";
   renderOutput("");
   copyText = "";
+  setSelectedNama(null);
   setStatus("Ready");
   queryInput.focus();
 }
@@ -291,6 +359,7 @@ function clearAll() {
 modeButtons.forEach((button) => button.addEventListener("click", () => setMode(button.dataset.mode)));
 searchButton.addEventListener("click", runSearch);
 queryInput.addEventListener("keydown", (event) => { if (event.key === "Enter") runSearch(); });
+if (namaFilter) namaFilter.addEventListener("input", renderNamaList);
 copyButton.addEventListener("click", copyOutput);
 clearButton.addEventListener("click", clearAll);
 helpButton.addEventListener("click", () => helpDialog.showModal());
