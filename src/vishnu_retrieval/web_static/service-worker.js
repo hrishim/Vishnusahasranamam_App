@@ -1,12 +1,12 @@
-const CACHE_NAME = "vishnusahasranamam-static-pwa-v15";
+const CACHE_NAME = "vishnusahasranamam-static-pwa-v16";
 const APP_SHELL = [
   "./",
   "index.html",
-  "styles.css?v=15",
-  "app.js?v=15",
-  "manifest.webmanifest?v=15",
+  "styles.css?v=16",
+  "app.js?v=16",
+  "manifest.webmanifest?v=16",
   "icon.svg",
-  "data/search-data.json?v=15",
+  "data/search-data.json?v=16",
 ];
 
 self.addEventListener("install", (event) => {

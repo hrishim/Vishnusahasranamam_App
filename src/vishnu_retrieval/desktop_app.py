@@ -214,16 +214,20 @@ def nama_numbers_for_entry_text(entry_text: str) -> list[int]:
 
 
 def clean_entry_heading(hit) -> str:
-    if hit.number is None:
+    number = hit.number
+    if number is None:
+        numbers = nama_numbers_for_entry_text(hit.text)
+        number = numbers[0] if len(numbers) == 1 else None
+    if number is None:
         return ""
-    row = canonical_by_number(hit.number)
+    row = canonical_by_number(number)
     if not row:
         return ""
     devanagari = row.get("devanagari", "").strip()
     roman = row.get("roman", "").strip()
     if devanagari:
-        return f"{devanagari} ({hit.number})"
-    return f"{roman or devanagari} ({hit.number})".strip()
+        return f"{devanagari} ({number})"
+    return f"{roman or devanagari} ({number})".strip()
 
 
 def is_page_artifact_line(line: str) -> bool:
@@ -347,10 +351,7 @@ def render_entry(query: str, top_k: int = 5) -> RenderedResult:
         sloka_hit = preceding_sloka_for_entry(hit, PAGES_JSONL)
         sloka = normalize_for_word(sloka_hit.text) if sloka_hit else ""
         entry_body = "\n\n".join(part for part in (sloka, body) if part)
-        nama_numbers = [hit.number] if hit.number is not None else nama_numbers_for_entry_text(hit.text)
-        entry_source = source_text(hit.page_start, hit.page_end, nama_numbers)
-        heading = entry_source or "Nama"
-        display_sections.append(f"{heading}\n\n{entry_body}")
+        display_sections.append(entry_body)
         copy_sections.append(entry_body)
     return RenderedResult("\n\n".join(display_sections), "\n\n".join(copy_sections))
 
@@ -572,6 +573,7 @@ def build_window(qt: dict):
             self.resize(1180, 740)
             self.setMinimumSize(900, 560)
             self.copy_text = ""
+            self.updating_nama_list = False
             self.build_menu(QAction, QKeySequence, QApplication)
 
             root = QWidget()
@@ -651,6 +653,7 @@ def build_window(qt: dict):
             self.nama_list.setObjectName("namaList")
             self.nama_list.setAlternatingRowColors(False)
             self.nama_list.itemClicked.connect(self.open_nama_from_list)
+            self.nama_list.currentItemChanged.connect(lambda current, _previous: self.open_nama_from_list(current))
             self.nama_rows = tuple(load_canonical_namas())
             self.populate_nama_list()
             nama_panel_layout.addWidget(nama_title)
@@ -840,6 +843,7 @@ def build_window(qt: dict):
             query = self.nama_filter.text().strip() if hasattr(self, "nama_filter") else ""
             query_key = re.sub(r"\D+", "", query)
             query_devanagari = re.sub(r"[^\u0900-\u097F]", "", query)
+            self.updating_nama_list = True
             self.nama_list.clear()
             for row in self.nama_rows:
                 number = int(row["number"])
@@ -851,13 +855,19 @@ def build_window(qt: dict):
                 item = QListWidgetItem(f"{number}. {devanagari}")
                 item.setData(Qt.ItemDataRole.UserRole, number)
                 self.nama_list.addItem(item)
+            self.updating_nama_list = False
 
         def open_nama_from_list(self, item) -> None:
+            if getattr(self, "updating_nama_list", False):
+                return
+            if item is None:
+                return
             number = item.data(Qt.ItemDataRole.UserRole)
             if not number:
                 return
+            row = canonical_by_number(int(number))
             self.entry_mode.setChecked(True)
-            self.query.setText(f"nāma {number}")
+            self.query.setText((row or {}).get("devanagari", "") or f"nāma {number}")
             self.run_search()
 
         def copy_output(self) -> None:

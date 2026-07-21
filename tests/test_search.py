@@ -36,7 +36,7 @@ def test_entry_heading_matches_capital_diacritic_roman_heading():
 def test_mahayajna_returns_great_yajna_entry():
     result = render_entry("Mahayajña")
 
-    assert "Nama: 677" in result.display_text
+    assert "महायज्ञ (677)" in result.display_text
     assert "महायज्ञ" in result.display_text
     assert "The one who is the great yaj" in result.display_text
     assert "The great sacrificer." not in result.display_text
@@ -98,8 +98,6 @@ def test_repeated_ananta_returns_886_and_659_entries():
 def test_repeated_ananta_full_entry_includes_both_slokas():
     result = render_entry("अनन्तः")
 
-    assert "Nama: 659" in result.display_text
-    assert "Nama: 886" in result.display_text
     assert "अनन्तः (886)" in result.display_text
     assert "अनन्तः (659)" in result.display_text
     assert "धनञ्जयः Dhananjayah" not in result.display_text
@@ -117,8 +115,7 @@ def test_repeated_aparajita_full_entry_and_sloka_search_include_both_slokas():
     entry = render_entry("अपराजितः")
     sloka = render_sloka("अपराजितः")
 
-    assert "Nama: 716" in entry.display_text
-    assert "Nama: 862" in entry.display_text
+    assert "अपराजितः (716)" in entry.display_text
     assert "अपराजितः (862)" in entry.display_text
     assert "दर्पहा दर्पदो दृप्तो दुर्धरोऽथापराजितः ॥७६॥" not in entry.display_text
     assert "दर्पहा दर्पदो दृप्तो दुर्धरोऽथापराजितः ॥७६॥" in sloka.display_text
@@ -129,8 +126,7 @@ def test_repeated_anagha_full_entry_and_sloka_search_include_both_slokas():
     entry = render_entry("अनघः")
     sloka = render_sloka("अनघः")
 
-    assert "Nama: 146" in entry.display_text
-    assert "Nama: 831" in entry.display_text
+    assert "अनघः (146)" in entry.display_text
     assert "अनघः (831)" in entry.display_text
     assert "अनघो विजयो जेता विश्वयोनिः पुनर्वसुः ॥१६॥" not in entry.display_text
     assert "काली कराली च मनोजवा" not in entry.display_text
@@ -264,8 +260,7 @@ def test_anirvinna_query_filters_out_prior_entry_and_uses_sloka_47():
     result = render_entry("अनिर्विण्णः")
     sloka = render_sloka("अनिर्विण्णः")
 
-    assert "Nama: 435" in result.display_text
-    assert "Nama: 892" in result.display_text
+    assert "अनिर्विण्णः (435)" in result.display_text
     assert "अनिर्विण्णः (892)" in result.display_text
     assert "महाधनः Mahadhanaḥ" not in result.display_text
     assert "विस्तारः स्थावरस्थाणुः प्रमाणं बीजमव्ययम् ।" not in result.display_text
@@ -315,8 +310,7 @@ def test_anila_repeated_entries_use_slokas_25_and_87_not_86():
     result = render_entry("अनिलः")
     sloka = render_sloka("अनिलः")
 
-    assert "Nama: 234" in result.display_text
-    assert "Nama: 812" in result.display_text
+    assert "अनिलः (234)" in result.display_text
     assert "अनिलः (812)" in result.display_text
     assert "सुवर्णबिन्दुरक्षोभ्यः सर्ववागीश्वरेश्वरः ।" not in result.display_text
     assert "कुमुदः कुन्दरः कुन्दः पर्जन्यः पावनोऽनिलः ।" in sloka.display_text
@@ -388,7 +382,7 @@ def test_desktop_entry_metadata_shows_safe_auxiliary_nama_number():
     result = render_entry("वृद्धात्मा")
 
     assert "वृद्धात्मा (352)" in result.display_text
-    assert "Nama: 352" in result.display_text
+    assert "Nama:" not in result.display_text
     assert "Page:" not in result.display_text
     assert result.meta_text == ""
     assert "Nama:" not in result.copy_text
@@ -397,22 +391,22 @@ def test_desktop_entry_metadata_shows_safe_auxiliary_nama_number():
 def test_desktop_entry_accepts_labelled_nama_number():
     result = render_entry("nama 241")
 
-    assert "Nama: 241" in result.display_text
+    assert "सत्कर्ता (241)" in result.display_text
     assert "Sat kartā" in result.display_text
-    assert "Nama: 89" not in result.display_text
+    assert "विश्वः (89)" not in result.display_text
 
 
 def test_desktop_entry_accepts_plain_nama_number():
     result = render_entry("241")
 
-    assert "Nama: 241" in result.display_text
+    assert "सत्कर्ता (241)" in result.display_text
     assert "Sat kartā" in result.display_text
 
 
 def test_desktop_entry_hides_standalone_printed_page_number_for_alias_query():
     result = render_entry("āvartano")
 
-    assert "Nama: 228" in result.display_text
+    assert "आवर्तनः (228)" in result.display_text
     assert "The one who causes the cycle" in result.display_text
     assert "\n180\n" not in result.display_text
     assert "180 The one who causes" not in display_text_to_html(result.display_text)
@@ -423,8 +417,7 @@ def test_desktop_entry_metadata_prefers_specific_heading_number():
 
     assert "अमितविक्रमः (641)" in result.display_text
     assert "अमितविक्रमः (516)" in result.display_text
-    assert "Nama: 516" in result.display_text
-    assert "Nama: 641" in result.display_text
+    assert "Nama:" not in result.display_text
     assert "Page:" not in result.display_text
     assert "Nama: 516, 641" not in result.display_text
 
