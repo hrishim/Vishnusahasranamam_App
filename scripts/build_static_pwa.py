@@ -15,7 +15,7 @@ from vishnu_retrieval.search import canonical_alias_keys, extract_entry_by_numbe
 ROOT = Path(__file__).resolve().parents[1]
 OUT = ROOT / "dist" / "pwa"
 STATIC = ROOT / "src" / "vishnu_retrieval" / "web_static"
-APP_VERSION = "v14"
+APP_VERSION = "v15"
 
 
 def strip_page_refs(text: str) -> str:
@@ -103,10 +103,10 @@ INDEX_HTML = """<!doctype html>
     <meta name="apple-mobile-web-app-title" content="Vishnu">
     <meta name="apple-mobile-web-app-status-bar-style" content="default">
     <title>Vishnusahasranamam</title>
-    <link rel="manifest" href="manifest.webmanifest?v=14">
+    <link rel="manifest" href="manifest.webmanifest?v=15">
     <link rel="icon" href="icon.svg" type="image/svg+xml">
     <link rel="apple-touch-icon" href="icon.svg">
-    <link rel="stylesheet" href="styles.css?v=14">
+    <link rel="stylesheet" href="styles.css?v=15">
   </head>
   <body>
     <main class="app-shell">
@@ -133,8 +133,19 @@ INDEX_HTML = """<!doctype html>
         </div>
       </section>
 
-      <section class="result-panel" aria-label="Result">
-        <div id="output" class="output" aria-live="polite"></div>
+      <section class="content-layout" aria-label="Nāma list and result">
+        <aside class="nama-panel" aria-label="All 1000 Sanskrit nāmas">
+          <div class="nama-panel-header">
+            <h2>1000 Nāmas</h2>
+            <span id="namaCount">Loading...</span>
+          </div>
+          <input id="namaFilter" class="nama-filter" autocomplete="off" autocapitalize="none" placeholder="Filter number or Sanskrit">
+          <div id="namaList" class="nama-list" role="listbox" aria-label="All 1000 Sanskrit nāmas"></div>
+        </aside>
+
+        <section class="result-panel" aria-label="Result">
+          <div id="output" class="output" aria-live="polite"></div>
+        </section>
       </section>
 
       <footer class="actionbar">
@@ -151,11 +162,13 @@ INDEX_HTML = """<!doctype html>
         <dd>Best for one of the 1000 names. It returns the complete verified entry.</dd>
         <dt>Śloka</dt>
         <dd>Best for a śloka number from 1 to 108. Type 78 or śloka 78.</dd>
+        <dt>Nāma List</dt>
+        <dd>Click any Sanskrit name in the left panel to open its verified entry.</dd>
       </dl>
       <button id="closeHelpButton" type="button">Close</button>
     </dialog>
 
-    <script src="app.js?v=14"></script>
+    <script src="app.js?v=15"></script>
   </body>
 </html>
 """
@@ -171,13 +184,17 @@ const helpButton = document.querySelector("#helpButton");
 const helpDialog = document.querySelector("#helpDialog");
 const closeHelpButton = document.querySelector("#closeHelpButton");
 const modeButtons = Array.from(document.querySelectorAll(".mode-button"));
-const APP_VERSION = "v14";
+const namaList = document.querySelector("#namaList");
+const namaCount = document.querySelector("#namaCount");
+const namaFilter = document.querySelector("#namaFilter");
+const APP_VERSION = "v15";
 
 let activeMode = "entry";
 let copyText = "";
 let data = null;
 let devMap = new Map();
 let romanMap = new Map();
+let selectedNamaNumber = null;
 
 function setStatus(text, copied = false) {
   status.textContent = text;
@@ -258,10 +275,72 @@ function buildMaps() {
   }
 }
 
+function setSelectedNama(number) {
+  selectedNamaNumber = number;
+  if (!namaList) return;
+  for (const button of namaList.querySelectorAll(".nama-list-item")) {
+    const selected = Number(button.dataset.number) === number;
+    button.classList.toggle("active", selected);
+    button.setAttribute("aria-selected", selected ? "true" : "false");
+  }
+}
+
+function renderNamaList() {
+  if (!namaList || !data) return;
+  namaList.textContent = "";
+  const filterText = namaFilter ? namaFilter.value.trim() : "";
+  const filterNumber = filterText.replace(/\D+/g, "");
+  const filterDevanagari = devKey(filterText);
+  const entries = [...data.entries].sort((left, right) => left.number - right.number);
+  const visibleEntries = entries.filter((entry) => {
+    if (filterNumber && !String(entry.number).startsWith(filterNumber)) return false;
+    if (filterDevanagari && !entry.devanagari.includes(filterDevanagari)) return false;
+    return true;
+  });
+  for (const entry of visibleEntries) {
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = "nama-list-item";
+    button.dataset.number = String(entry.number);
+    button.setAttribute("role", "option");
+    button.setAttribute("aria-selected", "false");
+
+    const number = document.createElement("span");
+    number.className = "nama-number";
+    number.textContent = String(entry.number);
+
+    const name = document.createElement("span");
+    name.className = "nama-name";
+    name.textContent = entry.devanagari;
+
+    button.append(number, name);
+    button.addEventListener("click", () => openNama(entry.number));
+    namaList.appendChild(button);
+  }
+  namaCount.textContent = filterText ? `${visibleEntries.length}/1000` : `${entries.length}/1000`;
+  if (entries.length !== 1000) {
+    namaCount.classList.add("warning");
+    setStatus("Nāma list incomplete");
+  }
+  setSelectedNama(selectedNamaNumber);
+}
+
+function openNama(number) {
+  if (!data) return;
+  setMode("entry");
+  queryInput.value = `nāma ${number}`;
+  const result = entrySearch(String(number));
+  renderOutput(result.display);
+  copyText = result.copy;
+  setSelectedNama(number);
+  setStatus(`Nāma ${number}`);
+}
+
 async function loadData() {
   const response = await fetch(`data/search-data.json?${APP_VERSION}`, { cache: "reload" });
   data = await response.json();
   buildMaps();
+  renderNamaList();
   setStatus("Ready");
 }
 
@@ -427,6 +506,7 @@ function runSearch() {
   else result = entrySearch(query);
   renderOutput(result.display);
   copyText = result.copy;
+  setSelectedNama(activeMode === "entry" ? parseNamaNumber(query) : null);
   setStatus("Ready");
 }
 
@@ -447,6 +527,7 @@ function clearAll() {
   queryInput.value = "";
   renderOutput("");
   copyText = "";
+  setSelectedNama(null);
   setStatus("Ready");
   queryInput.focus();
 }
@@ -454,6 +535,7 @@ function clearAll() {
 modeButtons.forEach((button) => button.addEventListener("click", () => setMode(button.dataset.mode)));
 searchButton.addEventListener("click", runSearch);
 queryInput.addEventListener("keydown", (event) => { if (event.key === "Enter") runSearch(); });
+if (namaFilter) namaFilter.addEventListener("input", renderNamaList);
 copyButton.addEventListener("click", copyOutput);
 clearButton.addEventListener("click", clearAll);
 helpButton.addEventListener("click", () => helpDialog.showModal());
@@ -467,15 +549,15 @@ loadData().catch((error) => {
 """
 
 
-SERVICE_WORKER = """const CACHE_NAME = "vishnusahasranamam-static-pwa-v14";
+SERVICE_WORKER = """const CACHE_NAME = "vishnusahasranamam-static-pwa-v15";
 const APP_SHELL = [
   "./",
   "index.html",
-  "styles.css?v=14",
-  "app.js?v=14",
-  "manifest.webmanifest?v=14",
+  "styles.css?v=15",
+  "app.js?v=15",
+  "manifest.webmanifest?v=15",
   "icon.svg",
-  "data/search-data.json?v=14",
+  "data/search-data.json?v=15",
 ];
 
 self.addEventListener("install", (event) => {

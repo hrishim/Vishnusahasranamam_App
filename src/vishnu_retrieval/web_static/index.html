@@ -8,16 +8,16 @@
     <meta name="apple-mobile-web-app-title" content="Vishnu">
     <meta name="apple-mobile-web-app-status-bar-style" content="default">
     <title>Vishnusahasranamam</title>
-    <link rel="manifest" href="/manifest.webmanifest">
-    <link rel="icon" href="/icon.svg" type="image/svg+xml">
-    <link rel="apple-touch-icon" href="/icon.svg">
-    <link rel="stylesheet" href="/styles.css">
+    <link rel="manifest" href="manifest.webmanifest?v=15">
+    <link rel="icon" href="icon.svg" type="image/svg+xml">
+    <link rel="apple-touch-icon" href="icon.svg">
+    <link rel="stylesheet" href="styles.css?v=15">
   </head>
   <body>
     <main class="app-shell">
       <header class="topbar">
         <div class="brand">
-          <img class="brand-icon" src="/icon.svg" alt="">
+          <img class="brand-icon" src="icon.svg" alt="">
           <div>
             <h1>Vishnusahasranamam</h1>
             <p>Search nāmas and ślokas. Results stay local.</p>
@@ -38,14 +38,25 @@
         </div>
       </section>
 
-      <section class="result-panel" aria-label="Result">
-        <div id="output" class="output" aria-live="polite"></div>
+      <section class="content-layout" aria-label="Nāma list and result">
+        <aside class="nama-panel" aria-label="All 1000 Sanskrit nāmas">
+          <div class="nama-panel-header">
+            <h2>1000 Nāmas</h2>
+            <span id="namaCount">Loading...</span>
+          </div>
+          <input id="namaFilter" class="nama-filter" autocomplete="off" autocapitalize="none" placeholder="Filter number or Sanskrit">
+          <div id="namaList" class="nama-list" role="listbox" aria-label="All 1000 Sanskrit nāmas"></div>
+        </aside>
+
+        <section class="result-panel" aria-label="Result">
+          <div id="output" class="output" aria-live="polite"></div>
+        </section>
       </section>
 
       <footer class="actionbar">
         <button id="copyButton" type="button">Copy</button>
         <button id="clearButton" type="button">Clear</button>
-        <span id="status" class="status">Ready</span>
+        <span id="status" class="status">Loading...</span>
       </footer>
     </main>
 
@@ -56,12 +67,12 @@
         <dd>Best for one of the 1000 names. It returns the complete verified entry.</dd>
         <dt>Śloka</dt>
         <dd>Best for a śloka number from 1 to 108. Type 78 or śloka 78.</dd>
-        <dt>Copy</dt>
-        <dd>Copies the result text without internal notes.</dd>
+        <dt>Nāma List</dt>
+        <dd>Click any Sanskrit name in the left panel to open its verified entry.</dd>
       </dl>
       <button id="closeHelpButton" type="button">Close</button>
     </dialog>
 
-    <script src="/app.js"></script>
+    <script src="app.js?v=15"></script>
   </body>
 </html>

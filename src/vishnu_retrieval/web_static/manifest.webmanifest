@@ -1,15 +1,15 @@
 {
   "name": "Vishnusahasranamam",
   "short_name": "Vishnu",
-  "description": "Local verbatim retrieval for Vishnusahasranamam entries.",
-  "start_url": "/",
-  "scope": "/",
+  "description": "Local Vishnusahasranamam nāma and śloka search.",
+  "start_url": ".",
+  "scope": ".",
   "display": "standalone",
   "background_color": "#f7f7f4",
   "theme_color": "#244f7a",
   "icons": [
     {
-      "src": "/icon.svg",
+      "src": "icon.svg",
       "sizes": "any",
       "type": "image/svg+xml",
       "purpose": "any maskable"

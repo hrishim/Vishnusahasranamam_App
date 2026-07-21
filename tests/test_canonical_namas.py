@@ -1,5 +1,6 @@
 from vishnu_retrieval.canonical import canonical_by_number, load_canonical_namas
 from vishnu_retrieval.search import canonical_numbers_for_query
+import re
 
 
 def test_canonical_table_has_all_1000_namas():
@@ -7,6 +8,16 @@ def test_canonical_table_has_all_1000_namas():
 
     assert len(rows) == 1000
     assert [int(row["number"]) for row in rows] == list(range(1, 1001))
+
+
+def test_canonical_devanagari_labels_are_sanskrit_only():
+    rows = load_canonical_namas()
+
+    for row in rows:
+        devanagari = row["devanagari"]
+        assert devanagari.strip()
+        assert re.search(r"[\u0900-\u097F]", devanagari)
+        assert not re.search(r"[A-Za-z]", devanagari)
 
 
 def test_common_roman_spellings_find_hrisikesa():

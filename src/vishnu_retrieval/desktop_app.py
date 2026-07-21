@@ -8,7 +8,7 @@ from html import escape
 from dataclasses import dataclass
 from functools import lru_cache
 
-from .canonical import canonical_by_number
+from .canonical import canonical_by_number, load_canonical_namas
 from .corrections import apply_curated_corrections
 from .io import DERIVATION_OVERRIDES_JSON, PAGES_JSONL
 from .nama_index import numbers_for_devanagari_name
@@ -33,6 +33,9 @@ Best for one of the 1000 names. Type Devanagari or Roman text such as प्र�
 
 Śloka
 Best for a śloka number from 1 to 108. Type 78 or śloka 78.
+
+Nāma List
+Click a Sanskrit name in the left panel to open that verified entry.
 
 Copy
 Copies the result text without internal notes."""
@@ -507,6 +510,8 @@ def require_qt():
             QHBoxLayout,
             QLabel,
             QLineEdit,
+            QListWidget,
+            QListWidgetItem,
             QMainWindow,
             QMessageBox,
             QPushButton,
@@ -529,6 +534,8 @@ def require_qt():
         "QHBoxLayout": QHBoxLayout,
         "QLabel": QLabel,
         "QLineEdit": QLineEdit,
+        "QListWidget": QListWidget,
+        "QListWidgetItem": QListWidgetItem,
         "QMainWindow": QMainWindow,
         "QMessageBox": QMessageBox,
         "QPushButton": QPushButton,
@@ -549,6 +556,8 @@ def build_window(qt: dict):
     QHBoxLayout = qt["QHBoxLayout"]
     QLabel = qt["QLabel"]
     QLineEdit = qt["QLineEdit"]
+    QListWidget = qt["QListWidget"]
+    QListWidgetItem = qt["QListWidgetItem"]
     QMainWindow = qt["QMainWindow"]
     QMessageBox = qt["QMessageBox"]
     QPushButton = qt["QPushButton"]
@@ -560,8 +569,8 @@ def build_window(qt: dict):
         def __init__(self) -> None:
             super().__init__()
             self.setWindowTitle(APP_TITLE)
-            self.resize(1000, 740)
-            self.setMinimumSize(760, 560)
+            self.resize(1180, 740)
+            self.setMinimumSize(900, 560)
             self.copy_text = ""
             self.build_menu(QAction, QKeySequence, QApplication)
 
@@ -624,7 +633,35 @@ def build_window(qt: dict):
             self.output.setReadOnly(True)
             self.output.setLineWrapMode(QTextEdit.LineWrapMode.WidgetWidth)
             self.output.setFont(QFont("Arial Unicode MS", 16))
-            layout.addWidget(self.output, 1)
+
+            nama_panel = QWidget()
+            nama_panel.setObjectName("namaPanel")
+            nama_panel_layout = QVBoxLayout(nama_panel)
+            nama_panel_layout.setContentsMargins(10, 10, 10, 10)
+            nama_panel_layout.setSpacing(8)
+            nama_panel.setMinimumWidth(250)
+            nama_panel.setMaximumWidth(320)
+            nama_title = QLabel("1000 Nāmas")
+            nama_title.setObjectName("namaPanelTitle")
+            self.nama_filter = QLineEdit()
+            self.nama_filter.setObjectName("namaFilter")
+            self.nama_filter.setPlaceholderText("Filter number or Sanskrit")
+            self.nama_filter.textChanged.connect(self.populate_nama_list)
+            self.nama_list = QListWidget()
+            self.nama_list.setObjectName("namaList")
+            self.nama_list.setAlternatingRowColors(False)
+            self.nama_list.itemClicked.connect(self.open_nama_from_list)
+            self.nama_rows = tuple(load_canonical_namas())
+            self.populate_nama_list()
+            nama_panel_layout.addWidget(nama_title)
+            nama_panel_layout.addWidget(self.nama_filter)
+            nama_panel_layout.addWidget(self.nama_list, 1)
+
+            content = QHBoxLayout()
+            content.setSpacing(12)
+            content.addWidget(nama_panel)
+            content.addWidget(self.output, 1)
+            layout.addLayout(content, 1)
 
             bottom = QHBoxLayout()
             bottom.setSpacing(10)
@@ -734,6 +771,41 @@ def build_window(qt: dict):
                     selection-background-color: #b8d7ff;
                     line-height: 145%;
                 }
+                QWidget#namaPanel {
+                    background: #ffffff;
+                    border: 1px solid #d4d9de;
+                    border-radius: 10px;
+                }
+                QLabel#namaPanelTitle {
+                    color: #17212d;
+                    font-family: "Avenir Next";
+                    font-size: 16px;
+                    font-weight: 700;
+                }
+                QLineEdit#namaFilter {
+                    font-size: 15px;
+                    padding: 8px 10px;
+                }
+                QListWidget#namaList {
+                    background: transparent;
+                    color: #18222f;
+                    border: 0;
+                    border-radius: 0;
+                    padding: 0;
+                    font-family: "Arial Unicode MS";
+                    font-size: 16px;
+                    outline: none;
+                }
+                QListWidget#namaList::item {
+                    min-height: 30px;
+                    padding: 5px 8px;
+                    border-radius: 6px;
+                }
+                QListWidget#namaList::item:selected {
+                    background: #dbe8f3;
+                    color: #173352;
+                    font-weight: 700;
+                }
                 """
             )
 
@@ -763,6 +835,30 @@ def build_window(qt: dict):
             self.output.verticalScrollBar().setValue(0)
             self.copy_text = result.copy_text
             self.status.setText("Ready")
+
+        def populate_nama_list(self) -> None:
+            query = self.nama_filter.text().strip() if hasattr(self, "nama_filter") else ""
+            query_key = re.sub(r"\D+", "", query)
+            query_devanagari = re.sub(r"[^\u0900-\u097F]", "", query)
+            self.nama_list.clear()
+            for row in self.nama_rows:
+                number = int(row["number"])
+                devanagari = row["devanagari"]
+                if query_key and not str(number).startswith(query_key):
+                    continue
+                if query_devanagari and query_devanagari not in devanagari:
+                    continue
+                item = QListWidgetItem(f"{number}. {devanagari}")
+                item.setData(Qt.ItemDataRole.UserRole, number)
+                self.nama_list.addItem(item)
+
+        def open_nama_from_list(self, item) -> None:
+            number = item.data(Qt.ItemDataRole.UserRole)
+            if not number:
+                return
+            self.entry_mode.setChecked(True)
+            self.query.setText(f"nāma {number}")
+            self.run_search()
 
         def copy_output(self) -> None:
             text = self.copy_text.strip()
