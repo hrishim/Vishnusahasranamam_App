@@ -15,7 +15,7 @@ from vishnu_retrieval.search import canonical_alias_keys, extract_entry_by_numbe
 ROOT = Path(__file__).resolve().parents[1]
 OUT = ROOT / "dist" / "pwa"
 STATIC = ROOT / "src" / "vishnu_retrieval" / "web_static"
-APP_VERSION = "v13"
+APP_VERSION = "v14"
 
 
 def strip_page_refs(text: str) -> str:
@@ -103,10 +103,10 @@ INDEX_HTML = """<!doctype html>
     <meta name="apple-mobile-web-app-title" content="Vishnu">
     <meta name="apple-mobile-web-app-status-bar-style" content="default">
     <title>Vishnusahasranamam</title>
-    <link rel="manifest" href="manifest.webmanifest?v=13">
+    <link rel="manifest" href="manifest.webmanifest?v=14">
     <link rel="icon" href="icon.svg" type="image/svg+xml">
     <link rel="apple-touch-icon" href="icon.svg">
-    <link rel="stylesheet" href="styles.css?v=13">
+    <link rel="stylesheet" href="styles.css?v=14">
   </head>
   <body>
     <main class="app-shell">
@@ -115,7 +115,7 @@ INDEX_HTML = """<!doctype html>
           <img class="brand-icon" src="icon.svg" alt="">
           <div>
             <h1>Vishnusahasranamam</h1>
-            <p>Search nāmas, passages, and questions. Results stay local.</p>
+            <p>Search nāmas and ślokas. Results stay local.</p>
           </div>
         </div>
         <button class="ghost-button" id="helpButton" type="button">Help</button>
@@ -123,14 +123,13 @@ INDEX_HTML = """<!doctype html>
 
       <section class="search-panel" aria-label="Search">
         <div class="query-row">
-          <input id="queryInput" autocomplete="off" autocapitalize="none" placeholder="प्राणदः, Madhava, or where do the three Vedas come from">
+          <input id="queryInput" autocomplete="off" autocapitalize="none" placeholder="प्राणदः, Madhava, nāma 241, or śloka 78">
           <button class="primary-button" id="searchButton" type="button">Search</button>
         </div>
 
         <div class="mode-row" role="radiogroup" aria-label="Search mode">
           <button class="mode-button active" type="button" data-mode="entry" aria-pressed="true">Nāma</button>
           <button class="mode-button" type="button" data-mode="sloka" aria-pressed="false">Śloka</button>
-          <button class="mode-button" type="button" data-mode="answer" aria-pressed="false">Question</button>
         </div>
       </section>
 
@@ -152,13 +151,11 @@ INDEX_HTML = """<!doctype html>
         <dd>Best for one of the 1000 names. It returns the complete verified entry.</dd>
         <dt>Śloka</dt>
         <dd>Best for a śloka number from 1 to 108. Type 78 or śloka 78.</dd>
-        <dt>Question</dt>
-        <dd>Best for a simple question. It gives a short answer when the matching passage is strong enough.</dd>
       </dl>
       <button id="closeHelpButton" type="button">Close</button>
     </dialog>
 
-    <script src="app.js?v=13"></script>
+    <script src="app.js?v=14"></script>
   </body>
 </html>
 """
@@ -174,7 +171,7 @@ const helpButton = document.querySelector("#helpButton");
 const helpDialog = document.querySelector("#helpDialog");
 const closeHelpButton = document.querySelector("#closeHelpButton");
 const modeButtons = Array.from(document.querySelectorAll(".mode-button"));
-const APP_VERSION = "v13";
+const APP_VERSION = "v14";
 
 let activeMode = "entry";
 let copyText = "";
@@ -414,64 +411,10 @@ function slokaSearch(query) {
   };
 }
 
-const instructionWords = new Set(["a", "an", "and", "are", "come", "comes", "define", "describe", "do", "does", "explain", "for", "from", "give", "how", "in", "is", "meaning", "of", "on", "please", "show", "tell", "the", "this", "to", "what", "where"]);
-const expansions = { bagha: ["bhaga", "virtues", "six", "fold"], bhaga: ["virtues", "six", "fold"], vedas: ["veda", "trayi", "pranava"] };
-
-function queryTerms(query) {
-  const terms = [];
-  for (const token of tokens(query)) {
-    if (instructionWords.has(token)) continue;
-    terms.push(token);
-    if (expansions[token]) terms.push(...expansions[token]);
-  }
-  return [...new Set(terms)];
-}
-
-function answerSearch(query) {
-  const terms = queryTerms(query);
-  if (!terms.length) return { display: "No clear answer found in this text.", copy: "No clear answer found in this text." };
-  const scored = data.passages.map((passage) => {
-    const text = latinFold(passage.text);
-    let score = 0;
-    for (const term of terms) {
-      if (text.includes(term)) score += term.length > 4 ? 2 : 1;
-    }
-    return { passage, score };
-  }).filter((item) => item.score > 0).sort((a, b) => b.score - a.score).slice(0, 3);
-  if (!scored.length || scored[0].score < 2) {
-    const message = "No clear answer found in this text.";
-    return { display: message, copy: message };
-  }
-  const bullets = [];
-  const seen = new Set();
-  for (const item of scored) {
-    const parts = item.passage.text.replace(/(?<!\n)\n(?!\n)/g, " ").split(/(?<=[.!?।॥])\s+|\n{2,}/);
-    const ranked = parts.map((sentence) => {
-      const clean = sentence.trim();
-      const folded = latinFold(clean);
-      let overlap = 0;
-      for (const term of terms) if (folded.includes(term)) overlap += 1;
-      return { clean, overlap };
-    }).filter((item) => item.clean.length > 30 && item.overlap > 0 && !seen.has(item.clean)).sort((a, b) => b.overlap - a.overlap);
-    for (const sentence of ranked.slice(0, 2)) {
-      seen.add(sentence.clean);
-      bullets.push(`- ${sentence.clean}`);
-      if (bullets.length >= 5) break;
-    }
-    if (bullets.length >= 5) break;
-  }
-  if (!bullets.length) {
-    const message = "No clear answer found in this text.";
-    return { display: message, copy: message };
-  }
-  const answer = `Answer:\n${bullets.join("\n")}`;
-  return { display: answer, copy: answer };
-}
-
 function runSearch() {
   const query = queryInput.value.trim();
   if (!query) {
-    setStatus("Type a nāma, śloka, or question first");
+    setStatus("Type a nāma or śloka first");
     queryInput.focus();
     return;
   }
@@ -480,9 +423,8 @@ function runSearch() {
     return;
   }
   let result;
-  if (activeMode === "entry") result = entrySearch(query);
-  else if (activeMode === "sloka") result = slokaSearch(query);
-  else result = answerSearch(query);
+  if (activeMode === "sloka") result = slokaSearch(query);
+  else result = entrySearch(query);
   renderOutput(result.display);
   copyText = result.copy;
   setStatus("Ready");
@@ -525,15 +467,15 @@ loadData().catch((error) => {
 """
 
 
-SERVICE_WORKER = """const CACHE_NAME = "vishnusahasranamam-static-pwa-v13";
+SERVICE_WORKER = """const CACHE_NAME = "vishnusahasranamam-static-pwa-v14";
 const APP_SHELL = [
   "./",
   "index.html",
-  "styles.css?v=13",
-  "app.js?v=13",
-  "manifest.webmanifest?v=13",
+  "styles.css?v=14",
+  "app.js?v=14",
+  "manifest.webmanifest?v=14",
   "icon.svg",
-  "data/search-data.json?v=13",
+  "data/search-data.json?v=14",
 ];
 
 self.addEventListener("install", (event) => {
@@ -578,7 +520,7 @@ self.addEventListener("fetch", (event) => {
 MANIFEST = {
     "name": "Vishnusahasranamam",
     "short_name": "Vishnu",
-    "description": "Local Vishnusahasranamam nāma search and answers.",
+    "description": "Local Vishnusahasranamam nāma and śloka search.",
     "start_url": ".",
     "scope": ".",
     "display": "standalone",

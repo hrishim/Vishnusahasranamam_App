@@ -605,6 +605,31 @@ def query_sloka_number(query: str) -> int | None:
     return None
 
 
+def query_nama_number(query: str) -> int | None:
+    text = normalize_text(query)
+    if not text:
+        return None
+    compact = re.sub(r"[^\d०-९]", "", text)
+    if compact and len(compact) == len(text.replace(" ", "")):
+        value = int(compact.translate(DEVANAGARI_DIGIT_TRANS))
+        return value if 1 <= value <= 1000 else None
+    labelled = re.fullmatch(
+        r"(?i)\s*(?:nama|nāma|name|नाम|नामा)\s*[:#.\-]?\s*([0-9०-९]{1,4})\s*",
+        text,
+    )
+    if labelled:
+        value = int(labelled.group(1).translate(DEVANAGARI_DIGIT_TRANS))
+        return value if 1 <= value <= 1000 else None
+    reversed_label = re.fullmatch(
+        r"(?i)\s*([0-9०-९]{1,4})\s*(?:nama|nāma|name|नाम|नामा)\s*",
+        text,
+    )
+    if reversed_label:
+        value = int(reversed_label.group(1).translate(DEVANAGARI_DIGIT_TRANS))
+        return value if 1 <= value <= 1000 else None
+    return None
+
+
 def sloka_number_from_block(block: str) -> int | None:
     candidates: list[str] = []
     for match in re.finditer(r"(?:[।|]\s*){2,}\s*([०-९0-9]{1,3})", block):
@@ -834,6 +859,13 @@ QUERY_INSTRUCTION_WORDS = {
 QUERY_EXPANSIONS = {
     "bagha": ["bhaga", "virtues", "six-fold"],
     "bhaga": ["virtues", "six-fold"],
+    "bhagavan": ["bhaga", "virtues", "six-fold", "jnana", "vairagya", "aisvarya"],
+    "bhagavān": ["bhaga", "virtues", "six-fold", "jnana", "vairagya", "aiśvarya"],
+    "bhagawan": ["bhagavan", "bhaga", "virtues", "six-fold", "jnana", "vairagya", "aisvarya"],
+    "bhagawān": ["bhagavān", "bhaga", "virtues", "six-fold", "jnana", "vairagya", "aiśvarya"],
+    "bhagwan": ["bhagavan", "bhaga", "virtues", "six-fold", "jnana", "vairagya", "aisvarya"],
+    "qualities": ["quality", "virtues", "gunas", "guṇas"],
+    "quality": ["qualities", "virtues", "guna", "guṇa"],
     "vedas": ["veda", "trayi", "pranava"],
 }
 
@@ -1052,6 +1084,12 @@ def preceding_sloka_for_entry(entry: EntryHit, pages_jsonl: Path = PAGES_JSONL) 
 
 
 def extract_entry(query: str, pages_jsonl: Path = PAGES_JSONL, window_after: int = 4) -> list[EntryHit]:
+    nama_number = query_nama_number(query)
+    if nama_number is not None:
+        hits_by_number = extract_entry_by_number(nama_number, pages_jsonl, window_after=window_after)
+        if hits_by_number:
+            return hits_by_number
+
     canonical_numbers = canonical_numbers_for_query(query)
     if canonical_numbers:
         hits_by_number = [
@@ -1233,25 +1271,38 @@ def passage_around(text: str, start: int, length: int, radius: int = 420) -> str
 
 
 def answer_from_hits(question: str, hits: list[SearchHit], sentence_limit: int = 5) -> str:
-    sentences: list[tuple[int, str]] = []
+    candidates: list[tuple[float, int, str]] = []
     seen: set[str] = set()
-    query_terms = set(tokenize(retrieval_query_text(question)))
-    for hit in hits:
+    retrieval_query = retrieval_query_text(question)
+    query_terms = set(tokenize(retrieval_query))
+    query_vector = sparse_vector(retrieval_query)
+    for hit_index, hit in enumerate(hits):
         text = apply_curated_corrections(hit.text)
         text = re.sub(r"(?<!\n)\n(?!\n)", " ", text)
         parts = re.split(r"(?<=[.!?।॥])\s+|\n{2,}", text)
-        ranked: list[tuple[int, str]] = []
-        for part in parts:
+        for sentence_index, part in enumerate(parts):
             clean = part.strip()
             if len(clean) < 20 or clean in seen:
                 continue
             overlap = len(query_terms.intersection(tokenize(clean)))
-            ranked.append((overlap, clean))
-        for _, sentence in sorted(ranked, key=lambda item: item[0], reverse=True)[:2]:
-            seen.add(sentence)
-            sentences.append((hit.page_start, sentence))
-            if len(sentences) >= sentence_limit:
-                break
+            semantic_score = cosine(query_vector, sparse_vector(clean))
+            if overlap <= 0 and semantic_score < 0.12:
+                continue
+            score = (
+                float(overlap)
+                + semantic_score * 8.0
+                + hit.score * 0.35
+                + hit.vector_score * 0.25
+                - hit_index * 0.02
+                - sentence_index * 0.005
+            )
+            candidates.append((score, hit.page_start, clean))
+    sentences: list[tuple[int, str]] = []
+    for _, page, sentence in sorted(candidates, key=lambda item: item[0], reverse=True):
+        if sentence in seen:
+            continue
+        seen.add(sentence)
+        sentences.append((page, sentence))
         if len(sentences) >= sentence_limit:
             break
     if not sentences:

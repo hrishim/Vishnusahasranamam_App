@@ -1,7 +1,7 @@
 {
   "name": "Vishnusahasranamam",
   "short_name": "Vishnu",
-  "description": "Local Vishnusahasranamam nāma search and answers.",
+  "description": "Local Vishnusahasranamam nāma and śloka search.",
   "start_url": ".",
   "scope": ".",
   "display": "standalone",

@@ -3,6 +3,7 @@ from __future__ import annotations
 import re
 import sys
 import json
+from difflib import SequenceMatcher
 from html import escape
 from dataclasses import dataclass
 from functools import lru_cache
@@ -13,16 +14,17 @@ from .io import DERIVATION_OVERRIDES_JSON, PAGES_JSONL
 from .nama_index import numbers_for_devanagari_name
 from .quality import audit_text
 from .search import (
-    answer_from_hits,
     exact_search,
     extract_entry,
     hybrid_search,
     parse_nama_heading,
     preceding_sloka_for_entry,
+    retrieval_query_text,
     sloka_search,
     strong_hits,
     roman_match_key,
 )
+from .textutil import cosine, sparse_vector, tokenize
 
 
 APP_TITLE = "Vishnusahasranamam"
@@ -31,9 +33,6 @@ Best for one of the 1000 names. Type Devanagari or Roman text such as प्र�
 
 Śloka
 Best for a śloka number from 1 to 108. Type 78 or śloka 78.
-
-Question
-Best for a simple question. It gives a short answer only when the matching passage is strong enough.
 
 Copy
 Copies the result text without internal notes."""
@@ -111,6 +110,7 @@ def display_text_to_html(text: str) -> str:
           body { color: #18222f; font-family: "Avenir Next", -apple-system, sans-serif; font-size: 16px; line-height: 1.42; }
           h2 { margin: 0 0 14px; font-size: 19px; font-weight: 700; }
           h3 { margin: 16px 0 8px; font-size: 17px; font-weight: 700; }
+          h4.citation { margin: 14px 0 8px; color: #425066; font-size: 14px; font-weight: 700; }
           p.para { margin: 0 0 12px; }
           div.script { margin: 0 0 7px; font-family: "Arial Unicode MS", "Devanagari Sangam MN", serif; font-size: 18px; line-height: 1.55; }
           div.translit { margin: 0 0 7px; color: #425066; font-family: "Arial Unicode MS", serif; font-size: 16px; line-height: 1.38; }
@@ -138,6 +138,9 @@ def display_text_to_html(text: str) -> str:
         elif re.match(r"^(Answer|Śloka)\b", line):
             flush()
             html_parts.append(f"<h3>{escape(line)}</h3>")
+        elif re.match(r"^Pages?:\s+\d+", line):
+            flush()
+            html_parts.append(f'<h4 class="citation">{escape(line)}</h4>')
         elif line.startswith("- "):
             flush()
             html_parts.append(f'<p class="para">• {escape(line[2:].strip())}</p>')
@@ -229,6 +232,26 @@ def is_page_artifact_line(line: str) -> bool:
     return stripped.upper() in {"VISNUSAHASRANAMA", "VIṢṆUSAHASRANAMA", "VISHNUSAHASRANAMA"}
 
 
+def strip_embedded_page_marker(line: str, page_start: int, page_end: int | None = None) -> str:
+    page_numbers = {page_start}
+    if page_end is not None:
+        page_numbers.add(page_end)
+    for page_number in sorted(page_numbers):
+        line = re.sub(rf"^\s*{page_number}\s+(?=[A-ZĀĪŪṚṜḶṄÑṬḌṆŚṢḤ])", "", line)
+    return line
+
+
+def remove_page_artifacts(lines: list[str], hit) -> list[str]:
+    cleaned: list[str] = []
+    for line in lines:
+        if is_page_artifact_line(line):
+            continue
+        line = strip_embedded_page_marker(line, hit.page_start, hit.page_end)
+        if line.strip() or not cleaned or cleaned[-1].strip():
+            cleaned.append(line)
+    return cleaned
+
+
 def has_near_heading_derivation(lines: list[str]) -> bool:
     for line in lines[1:5]:
         if re.search(r"[\u0900-\u097F]", line) and len(re.findall(r"[\u0900-\u097F]", line)) >= 8:
@@ -283,10 +306,12 @@ def remove_top_broken_fragments(lines: list[str]) -> list[str]:
 
 def entry_body_with_clean_heading(hit) -> str:
     body = normalize_for_word(hit.text)
+    body_lines = remove_page_artifacts(body.splitlines(), hit)
+    body = "\n".join(body_lines).strip()
     clean_heading = clean_entry_heading(hit)
     if not clean_heading:
         return body
-    lines = body.splitlines()
+    lines = body_lines
     if lines:
         cleaned_lines = [clean_heading]
         index = 1
@@ -301,7 +326,7 @@ def entry_body_with_clean_heading(hit) -> str:
                 index += 1
                 continue
             break
-        cleaned_lines.extend(line for line in lines[index:] if not is_page_artifact_line(line))
+        cleaned_lines.extend(lines[index:])
         lines = remove_top_broken_fragments(insert_derivation_override(cleaned_lines, hit))
         return "\n".join(lines).strip()
     return clean_heading
@@ -399,17 +424,76 @@ def render_hybrid(query: str, top_k: int = 3) -> RenderedResult:
     return RenderedResult("\n\n".join(sections), "\n\n".join(copy_sections))
 
 
+def source_excerpt_for_question(query: str, text: str, max_chars: int = 1200) -> str:
+    body = normalize_for_word(text)
+
+    parts = [part.strip() for part in re.split(r"(?<=[.!?।॥])\s+|\n{2,}", body) if part.strip()]
+    if not parts:
+        return body[:max_chars].rstrip()
+
+    retrieval_query = retrieval_query_text(query)
+    query_terms = set(tokenize(retrieval_query))
+    query_vector = sparse_vector(retrieval_query)
+    ranked: list[tuple[float, int]] = []
+    for index, part in enumerate(parts):
+        overlap = len(query_terms.intersection(tokenize(part)))
+        semantic_score = cosine(query_vector, sparse_vector(part))
+        ranked.append((float(overlap) + semantic_score * 8.0 - index * 0.002, index))
+    _, best_index = max(ranked, key=lambda item: item[0])
+
+    selected: list[str] = []
+    right = best_index + 1
+    for index in range(best_index, len(parts)):
+        if selected and not re.search(r"[.!?।॥:'”)]$", parts[index]):
+            break
+        candidate = selected + [parts[index]]
+        if selected and len("\n".join(candidate)) > max_chars:
+            break
+        selected = candidate
+        right = index + 1
+        if len("\n".join(selected)) >= max_chars:
+            break
+    if not selected:
+        selected = [parts[best_index][:max_chars].rstrip()]
+    excerpt = re.sub(r"\s+", " ", " ".join(selected)).strip()
+    if excerpt and not re.search(r"[.!?।॥:'”)]$", excerpt):
+        last_end = max(excerpt.rfind(mark) for mark in ".!?।॥:")
+        if last_end >= 0:
+            excerpt = excerpt[: last_end + 1].strip()
+    return excerpt
+
+
+def is_near_duplicate_excerpt(excerpt: str, previous: list[str]) -> bool:
+    compact = re.sub(r"\W+", " ", excerpt.casefold()).strip()
+    if not compact:
+        return True
+    for item in previous:
+        other = re.sub(r"\W+", " ", item.casefold()).strip()
+        if compact in other or other in compact:
+            return True
+        if SequenceMatcher(None, compact[:900], other[:900]).ratio() >= 0.82:
+            return True
+    return False
+
+
 def render_answer(query: str, top_k: int = 3) -> RenderedResult:
     hits = strong_hits(hybrid_search(query, top_k=max(8, top_k)), top_k=top_k)
     if not hits or hits[0].keyword_score <= 0 or hits[0].score < 0.40:
         message = "No clear answer found in this text."
         return RenderedResult(message, message)
 
-    answer = answer_from_hits(query, hits)
-    if answer.startswith("No sufficiently grounded"):
+    sections = ["Answer:"]
+    excerpts: list[str] = []
+    for hit in hits:
+        body = source_excerpt_for_question(query, hit.text)
+        if not body or is_near_duplicate_excerpt(body, excerpts):
+            continue
+        excerpts.append(body)
+        sections.append(body)
+    if len(sections) == 1:
         message = "No clear answer found in this text."
         return RenderedResult(message, message)
-    answer = hide_page_references(answer)
+    answer = "\n\n".join(sections)
     return RenderedResult(answer, answer)
 
 
@@ -426,7 +510,6 @@ def require_qt():
             QMainWindow,
             QMessageBox,
             QPushButton,
-            QRadioButton,
             QTextEdit,
             QVBoxLayout,
             QWidget,
@@ -449,7 +532,6 @@ def require_qt():
         "QMainWindow": QMainWindow,
         "QMessageBox": QMessageBox,
         "QPushButton": QPushButton,
-        "QRadioButton": QRadioButton,
         "QTextEdit": QTextEdit,
         "QVBoxLayout": QVBoxLayout,
         "QWidget": QWidget,
@@ -470,7 +552,6 @@ def build_window(qt: dict):
     QMainWindow = qt["QMainWindow"]
     QMessageBox = qt["QMessageBox"]
     QPushButton = qt["QPushButton"]
-    QRadioButton = qt["QRadioButton"]
     QTextEdit = qt["QTextEdit"]
     QVBoxLayout = qt["QVBoxLayout"]
     QWidget = qt["QWidget"]
@@ -499,7 +580,7 @@ def build_window(qt: dict):
             title_stack.setSpacing(2)
             title = QLabel("Vishnusahasranamam")
             title.setObjectName("title")
-            subtitle = QLabel("Search the nāmas, ślokas, and short questions. Results stay local.")
+            subtitle = QLabel("Search the nāmas and ślokas. Results stay local.")
             subtitle.setObjectName("subtitle")
             title_stack.addWidget(title)
             title_stack.addWidget(subtitle)
@@ -510,7 +591,7 @@ def build_window(qt: dict):
             search_row = QHBoxLayout()
             search_row.setSpacing(10)
             self.query = QLineEdit()
-            self.query.setPlaceholderText("Example: प्राणदः, Madhava, or where do the three Vedas come from")
+            self.query.setPlaceholderText("Example: प्राणदः, Madhava, nāma 241, or śloka 78")
             self.query.setClearButtonEnabled(True)
             self.query.returnPressed.connect(self.run_search)
             self.find_button = QPushButton("Search")
@@ -525,10 +606,9 @@ def build_window(qt: dict):
             self.mode_group = QButtonGroup(self)
             self.entry_mode = QPushButton("Nāma")
             self.sloka_mode = QPushButton("Śloka")
-            self.answer_mode = QPushButton("Question")
             self.help_button = QPushButton("Help")
             self.mode_group.setExclusive(True)
-            for button in (self.entry_mode, self.sloka_mode, self.answer_mode):
+            for button in (self.entry_mode, self.sloka_mode):
                 button.setCheckable(True)
                 button.setObjectName("modeButton")
                 self.mode_group.addButton(button)
@@ -673,12 +753,10 @@ def build_window(qt: dict):
             self.status.setText("Searching...")
             QApplication.processEvents()
             try:
-                if self.entry_mode.isChecked():
-                    result = render_entry(query)
-                elif self.sloka_mode.isChecked():
+                if self.sloka_mode.isChecked():
                     result = render_sloka(query)
                 else:
-                    result = render_answer(query)
+                    result = render_entry(query)
             except Exception as exc:  # pragma: no cover - UI safety net
                 result = RenderedResult(f"Error: {exc}", "")
             self.output.setHtml(display_text_to_html(result.display_text))

@@ -1,3 +1,5 @@
+import re
+
 from vishnu_retrieval.search import (
     ENTRY_HEADING_RE,
     exact_search,
@@ -7,7 +9,8 @@ from vishnu_retrieval.search import (
     parse_nama_heading,
     sloka_search,
 )
-from vishnu_retrieval.desktop_app import render_entry, render_exact, render_sloka
+from vishnu_retrieval.corrections import apply_curated_corrections
+from vishnu_retrieval.desktop_app import display_text_to_html, render_entry, render_exact, render_sloka
 from vishnu_retrieval.desktop_app import render_answer, render_hybrid
 
 
@@ -189,6 +192,14 @@ def test_sloka_search_accepts_labelled_english_number():
 
     assert "धनुर्धरो धनुर्वेदो दण्डो दमयिता दमः ।" in result.display_text
     assert "अपराजितः सर्वसहो नियन्ताऽनियमोऽयमः ॥९२॥" in result.display_text
+
+
+def test_sloka_2_keeps_clean_iast_without_extra_p_prefixes():
+    result = render_sloka("sloka 2")
+
+    assert "pūtātmā paramātmā ca muktānāṃ paramā gatiḥ," in result.display_text
+    assert "pPPūtātmā" not in result.display_text
+    assert "pPParamātmā" not in result.display_text
 
 
 def test_sloka_search_plain_number_78_returns_only_sloka_78():
@@ -383,6 +394,30 @@ def test_desktop_entry_metadata_shows_safe_auxiliary_nama_number():
     assert "Nama:" not in result.copy_text
 
 
+def test_desktop_entry_accepts_labelled_nama_number():
+    result = render_entry("nama 241")
+
+    assert "Nama: 241" in result.display_text
+    assert "Sat kartā" in result.display_text
+    assert "Nama: 89" not in result.display_text
+
+
+def test_desktop_entry_accepts_plain_nama_number():
+    result = render_entry("241")
+
+    assert "Nama: 241" in result.display_text
+    assert "Sat kartā" in result.display_text
+
+
+def test_desktop_entry_hides_standalone_printed_page_number_for_alias_query():
+    result = render_entry("āvartano")
+
+    assert "Nama: 228" in result.display_text
+    assert "The one who causes the cycle" in result.display_text
+    assert "\n180\n" not in result.display_text
+    assert "180 The one who causes" not in display_text_to_html(result.display_text)
+
+
 def test_desktop_entry_metadata_prefers_specific_heading_number():
     result = render_entry("अमितविक्रमः")
 
@@ -419,15 +454,42 @@ def test_desktop_answer_uses_cited_retrieval():
 
     assert "Answer:" in result.display_text
     assert "Grounded answer" not in result.display_text
-    assert "[p." not in result.display_text
+    assert "Page:" not in result.display_text
+    assert "Source passage" not in result.display_text
     assert "score" not in result.meta_text
 
 
 def test_desktop_answer_uses_cleaned_query_terms():
     result = render_answer("explain Bagha")
 
-    assert "bhaga, the six-fold virtues" in result.display_text
-    assert "[p." not in result.display_text
+    assert "bhaga" in result.display_text
+    assert "six-fold virtues" in result.display_text or "six fold virtues" in result.display_text
+    assert "Page:" not in result.display_text
+    assert "Source passage" not in result.display_text
+
+
+def test_desktop_answer_qualities_of_bhagavan_uses_bhaga_source():
+    result = render_answer("what are qualities of Bhagavan")
+
+    assert "six fold virtues" in result.display_text or "six-fold qualities" in result.display_text
+    assert "jñāna" in result.display_text or "jnāna" in result.display_text
+    assert "vairāgya" in result.display_text
+    assert "aiśvarya" in result.display_text
+    assert "courage, confidence" not in result.display_text
+    assert "Page:" not in result.display_text
+    assert "Source passage" not in result.display_text
+
+
+def test_desktop_answer_qualities_of_bhagawan_spelling_uses_bhaga_source():
+    result = render_answer("what are qualities Bhagawan")
+
+    assert "six fold virtues" in result.display_text or "six-fold qualities" in result.display_text
+    assert "jñāna" in result.display_text or "jnāna" in result.display_text
+    assert "vairāgya" in result.display_text
+    assert "aiśvarya" in result.display_text
+    assert "Guṇabhṛt" not in result.display_text
+    assert "Page:" not in result.display_text
+    assert "Source passage" not in result.display_text
 
 
 def test_desktop_hybrid_question_filters_to_strong_three_vedas_match():
@@ -443,5 +505,53 @@ def test_desktop_answer_question_uses_three_vedas_source():
 
     assert result.display_text.startswith("Answer:")
     assert "Grounded answer" not in result.display_text
-    assert "The three Vedas come from pranava" in result.display_text
-    assert "[p." not in result.display_text
+    assert "The three Vedas come from pranava" in re.sub(r"\s+", " ", result.display_text)
+    assert "Veda ṛt" not in result.display_text
+    assert "Page:" not in result.display_text
+    assert "Source passage" not in result.display_text
+
+
+def test_desktop_answer_corrects_vedakrt_source_defect():
+    result = render_answer("Vedavit maker of the Vedas")
+
+    assert "Vedakṛt, the maker of the Vedas" in result.display_text
+    assert "Veda ṛt" not in result.display_text
+
+
+def test_curated_corrections_join_broken_krt_compounds_across_text():
+    text = "Veda ṛt, Śiṣṭa ṛt, Kāma ṛt, vedānta rt, śāstra rt, dharma rt, Brahma rt"
+
+    corrected = apply_curated_corrections(text)
+
+    assert corrected == "Vedakṛt, Śiṣṭakṛt, Kāmakṛt, vedāntakṛt, śāstrakṛt, dharmakṛt, Brahmakṛt"
+
+
+def test_curated_corrections_fix_observed_broken_kara_compounds():
+    text = (
+        "Bhagavān is Śrī ara. "
+        "Śrī araḥ brings Śrī. "
+        "The one who reveals knowledge is tīrtha ara. "
+        "He is Tīrtha āra. "
+        "He is Śarvar ara. "
+        "914. Śarvar araḥ."
+    )
+
+    corrected = apply_curated_corrections(text)
+
+    assert "Śrīkara" in corrected
+    assert "Śrīkaraḥ" in corrected
+    assert "tīrthakara" in corrected
+    assert "Tīrthakara" in corrected
+    assert "Śarvarīkara" in corrected
+    assert "Śarvarīkaraḥ" in corrected
+    assert "Śrī ara" not in corrected
+    assert "tīrtha ara" not in corrected
+    assert "Tīrtha āra" not in corrected
+    assert "Śarvar ara" not in corrected
+
+
+def test_desktop_entry_corrects_srikara_source_defect():
+    result = render_entry("श्रीकरः")
+
+    assert "Bhagavān is Śrīkara" in result.display_text
+    assert "Śrī ara" not in result.display_text

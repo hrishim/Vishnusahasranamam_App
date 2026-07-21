@@ -20,7 +20,7 @@
           <img class="brand-icon" src="/icon.svg" alt="">
           <div>
             <h1>Vishnusahasranamam</h1>
-            <p>Search nāmas, ślokas, and questions. Results stay local.</p>
+            <p>Search nāmas and ślokas. Results stay local.</p>
           </div>
         </div>
         <button class="ghost-button" id="helpButton" type="button">Help</button>
@@ -28,14 +28,13 @@
 
       <section class="search-panel" aria-label="Search">
         <div class="query-row">
-          <input id="queryInput" autocomplete="off" autocapitalize="none" placeholder="प्राणदः, Madhava, or where do the three Vedas come from">
+          <input id="queryInput" autocomplete="off" autocapitalize="none" placeholder="प्राणदः, Madhava, nāma 241, or śloka 78">
           <button class="primary-button" id="searchButton" type="button">Search</button>
         </div>
 
         <div class="mode-row" role="radiogroup" aria-label="Search mode">
           <button class="mode-button active" type="button" data-mode="entry" aria-pressed="true">Nāma</button>
           <button class="mode-button" type="button" data-mode="sloka" aria-pressed="false">Śloka</button>
-          <button class="mode-button" type="button" data-mode="answer" aria-pressed="false">Question</button>
         </div>
       </section>
 
@@ -57,8 +56,6 @@
         <dd>Best for one of the 1000 names. It returns the complete verified entry.</dd>
         <dt>Śloka</dt>
         <dd>Best for a śloka number from 1 to 108. Type 78 or śloka 78.</dd>
-        <dt>Question</dt>
-        <dd>Best for a simple question. It gives a short answer when the matching passage is strong enough.</dd>
         <dt>Copy</dt>
         <dd>Copies the result text without internal notes.</dd>
       </dl>

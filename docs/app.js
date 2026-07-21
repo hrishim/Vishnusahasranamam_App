@@ -8,7 +8,7 @@ const helpButton = document.querySelector("#helpButton");
 const helpDialog = document.querySelector("#helpDialog");
 const closeHelpButton = document.querySelector("#closeHelpButton");
 const modeButtons = Array.from(document.querySelectorAll(".mode-button"));
-const APP_VERSION = "v13";
+const APP_VERSION = "v14";
 
 let activeMode = "entry";
 let copyText = "";
@@ -248,64 +248,10 @@ function slokaSearch(query) {
   };
 }
 
-const instructionWords = new Set(["a", "an", "and", "are", "come", "comes", "define", "describe", "do", "does", "explain", "for", "from", "give", "how", "in", "is", "meaning", "of", "on", "please", "show", "tell", "the", "this", "to", "what", "where"]);
-const expansions = { bagha: ["bhaga", "virtues", "six", "fold"], bhaga: ["virtues", "six", "fold"], vedas: ["veda", "trayi", "pranava"] };
-
-function queryTerms(query) {
-  const terms = [];
-  for (const token of tokens(query)) {
-    if (instructionWords.has(token)) continue;
-    terms.push(token);
-    if (expansions[token]) terms.push(...expansions[token]);
-  }
-  return [...new Set(terms)];
-}
-
-function answerSearch(query) {
-  const terms = queryTerms(query);
-  if (!terms.length) return { display: "No clear answer found in this text.", copy: "No clear answer found in this text." };
-  const scored = data.passages.map((passage) => {
-    const text = latinFold(passage.text);
-    let score = 0;
-    for (const term of terms) {
-      if (text.includes(term)) score += term.length > 4 ? 2 : 1;
-    }
-    return { passage, score };
-  }).filter((item) => item.score > 0).sort((a, b) => b.score - a.score).slice(0, 3);
-  if (!scored.length || scored[0].score < 2) {
-    const message = "No clear answer found in this text.";
-    return { display: message, copy: message };
-  }
-  const bullets = [];
-  const seen = new Set();
-  for (const item of scored) {
-    const parts = item.passage.text.replace(/(?<!\n)\n(?!\n)/g, " ").split(/(?<=[.!?।॥])\s+|\n{2,}/);
-    const ranked = parts.map((sentence) => {
-      const clean = sentence.trim();
-      const folded = latinFold(clean);
-      let overlap = 0;
-      for (const term of terms) if (folded.includes(term)) overlap += 1;
-      return { clean, overlap };
-    }).filter((item) => item.clean.length > 30 && item.overlap > 0 && !seen.has(item.clean)).sort((a, b) => b.overlap - a.overlap);
-    for (const sentence of ranked.slice(0, 2)) {
-      seen.add(sentence.clean);
-      bullets.push(`- ${sentence.clean}`);
-      if (bullets.length >= 5) break;
-    }
-    if (bullets.length >= 5) break;
-  }
-  if (!bullets.length) {
-    const message = "No clear answer found in this text.";
-    return { display: message, copy: message };
-  }
-  const answer = `Answer:\n${bullets.join("\n")}`;
-  return { display: answer, copy: answer };
-}
-
 function runSearch() {
   const query = queryInput.value.trim();
   if (!query) {
-    setStatus("Type a nāma, śloka, or question first");
+    setStatus("Type a nāma or śloka first");
     queryInput.focus();
     return;
   }
@@ -314,9 +260,8 @@ function runSearch() {
     return;
   }
   let result;
-  if (activeMode === "entry") result = entrySearch(query);
-  else if (activeMode === "sloka") result = slokaSearch(query);
-  else result = answerSearch(query);
+  if (activeMode === "sloka") result = slokaSearch(query);
+  else result = entrySearch(query);
   renderOutput(result.display);
   copyText = result.copy;
   setStatus("Ready");
