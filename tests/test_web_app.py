@@ -5,7 +5,7 @@ def test_web_entry_search_returns_copy_text_without_page_footer():
     result = render_search("entry", "वृद्धात्मा")
 
     assert "वृद्धात्मा (352)" in result["display_text"]
-    assert "Entry 1 - Nama: 352" in result["display_text"]
+    assert "Nama: 352" in result["display_text"]
     assert "Page:" not in result["display_text"]
     assert "Pages:" not in result["display_text"]
     assert result["meta_text"] == ""

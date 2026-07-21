@@ -314,16 +314,14 @@ def render_entry(query: str, top_k: int = 5) -> RenderedResult:
 
     display_sections: list[str] = []
     copy_sections: list[str] = []
-    for index, hit in enumerate(hits, start=1):
+    for hit in hits:
         body = entry_body_with_clean_heading(hit)
         sloka_hit = preceding_sloka_for_entry(hit, PAGES_JSONL)
         sloka = normalize_for_word(sloka_hit.text) if sloka_hit else ""
         entry_body = "\n\n".join(part for part in (sloka, body) if part)
         nama_numbers = [hit.number] if hit.number is not None else nama_numbers_for_entry_text(hit.text)
         entry_source = source_text(hit.page_start, hit.page_end, nama_numbers)
-        heading = f"Entry {index}"
-        if entry_source:
-            heading += f" - {entry_source}"
+        heading = entry_source or "Nama"
         display_sections.append(f"{heading}\n\n{entry_body}")
         copy_sections.append(entry_body)
     return RenderedResult("\n\n".join(display_sections), "\n\n".join(copy_sections))

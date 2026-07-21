@@ -15,7 +15,7 @@ from vishnu_retrieval.search import canonical_alias_keys, extract_entry_by_numbe
 ROOT = Path(__file__).resolve().parents[1]
 OUT = ROOT / "dist" / "pwa"
 STATIC = ROOT / "src" / "vishnu_retrieval" / "web_static"
-APP_VERSION = "v11"
+APP_VERSION = "v13"
 
 
 def strip_page_refs(text: str) -> str:
@@ -103,10 +103,10 @@ INDEX_HTML = """<!doctype html>
     <meta name="apple-mobile-web-app-title" content="Vishnu">
     <meta name="apple-mobile-web-app-status-bar-style" content="default">
     <title>Vishnusahasranamam</title>
-    <link rel="manifest" href="manifest.webmanifest?v=11">
+    <link rel="manifest" href="manifest.webmanifest?v=13">
     <link rel="icon" href="icon.svg" type="image/svg+xml">
     <link rel="apple-touch-icon" href="icon.svg">
-    <link rel="stylesheet" href="styles.css?v=11">
+    <link rel="stylesheet" href="styles.css?v=13">
   </head>
   <body>
     <main class="app-shell">
@@ -158,7 +158,7 @@ INDEX_HTML = """<!doctype html>
       <button id="closeHelpButton" type="button">Close</button>
     </dialog>
 
-    <script src="app.js?v=11"></script>
+    <script src="app.js?v=13"></script>
   </body>
 </html>
 """
@@ -174,7 +174,7 @@ const helpButton = document.querySelector("#helpButton");
 const helpDialog = document.querySelector("#helpDialog");
 const closeHelpButton = document.querySelector("#closeHelpButton");
 const modeButtons = Array.from(document.querySelectorAll(".mode-button"));
-const APP_VERSION = "v11";
+const APP_VERSION = "v13";
 
 let activeMode = "entry";
 let copyText = "";
@@ -374,7 +374,7 @@ function entrySearch(query) {
   if (number !== null) {
     const entry = data.entries.find((item) => item.number === number);
     if (!entry) return { display: "No nāma entry found.", copy: "" };
-    return { display: `Entry 1 - Nama: ${entry.number}\n\n${entry.text}`, copy: entry.text };
+    return { display: `Nama: ${entry.number}\n\n${entry.text}`, copy: entry.text };
   }
   const dk = devKey(query);
   const rk = romanKey(query);
@@ -385,8 +385,9 @@ function entrySearch(query) {
     hits = data.entries.filter((entry) => entry.keys.some((key) => key.startsWith(rk)));
   }
   if (!hits.length) return { display: "No nāma entry found.", copy: "" };
-  const sections = hits.slice(0, 10).map((entry, index) => `Entry ${index + 1} - Nama: ${entry.number}\n\n${entry.text}`);
-  const copies = hits.slice(0, 10).map((entry) => entry.text);
+  const selected = hits.slice(0, 10);
+  const sections = selected.map((entry) => `Nama: ${entry.number}\n\n${entry.text}`);
+  const copies = selected.map((entry) => entry.text);
   return { display: sections.join("\n\n"), copy: copies.join("\n\n") };
 }
 
@@ -524,15 +525,15 @@ loadData().catch((error) => {
 """
 
 
-SERVICE_WORKER = """const CACHE_NAME = "vishnusahasranamam-static-pwa-v11";
+SERVICE_WORKER = """const CACHE_NAME = "vishnusahasranamam-static-pwa-v13";
 const APP_SHELL = [
   "./",
   "index.html",
-  "styles.css?v=11",
-  "app.js?v=11",
-  "manifest.webmanifest?v=11",
+  "styles.css?v=13",
+  "app.js?v=13",
+  "manifest.webmanifest?v=13",
   "icon.svg",
-  "data/search-data.json?v=11",
+  "data/search-data.json?v=13",
 ];
 
 self.addEventListener("install", (event) => {

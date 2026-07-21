@@ -8,7 +8,7 @@ const helpButton = document.querySelector("#helpButton");
 const helpDialog = document.querySelector("#helpDialog");
 const closeHelpButton = document.querySelector("#closeHelpButton");
 const modeButtons = Array.from(document.querySelectorAll(".mode-button"));
-const APP_VERSION = "v11";
+const APP_VERSION = "v13";
 
 let activeMode = "entry";
 let copyText = "";
@@ -208,7 +208,7 @@ function entrySearch(query) {
   if (number !== null) {
     const entry = data.entries.find((item) => item.number === number);
     if (!entry) return { display: "No nāma entry found.", copy: "" };
-    return { display: `Entry 1 - Nama: ${entry.number}\n\n${entry.text}`, copy: entry.text };
+    return { display: `Nama: ${entry.number}\n\n${entry.text}`, copy: entry.text };
   }
   const dk = devKey(query);
   const rk = romanKey(query);
@@ -219,8 +219,9 @@ function entrySearch(query) {
     hits = data.entries.filter((entry) => entry.keys.some((key) => key.startsWith(rk)));
   }
   if (!hits.length) return { display: "No nāma entry found.", copy: "" };
-  const sections = hits.slice(0, 10).map((entry, index) => `Entry ${index + 1} - Nama: ${entry.number}\n\n${entry.text}`);
-  const copies = hits.slice(0, 10).map((entry) => entry.text);
+  const selected = hits.slice(0, 10);
+  const sections = selected.map((entry) => `Nama: ${entry.number}\n\n${entry.text}`);
+  const copies = selected.map((entry) => entry.text);
   return { display: sections.join("\n\n"), copy: copies.join("\n\n") };
 }
 
