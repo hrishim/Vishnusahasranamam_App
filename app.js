@@ -11,7 +11,7 @@ const modeButtons = Array.from(document.querySelectorAll(".mode-button"));
 const namaList = document.querySelector("#namaList");
 const namaCount = document.querySelector("#namaCount");
 const namaFilter = document.querySelector("#namaFilter");
-const APP_VERSION = "v15";
+const APP_VERSION = "v16";
 
 let activeMode = "entry";
 let copyText = "";
@@ -151,8 +151,10 @@ function renderNamaList() {
 
 function openNama(number) {
   if (!data) return;
+  const entry = data.entries.find((item) => item.number === number);
+  if (!entry) return;
   setMode("entry");
-  queryInput.value = `nāma ${number}`;
+  queryInput.value = entry.devanagari;
   const result = entrySearch(String(number));
   renderOutput(result.display);
   copyText = result.copy;
@@ -274,7 +276,7 @@ function entrySearch(query) {
   if (number !== null) {
     const entry = data.entries.find((item) => item.number === number);
     if (!entry) return { display: "No nāma entry found.", copy: "" };
-    return { display: `Nama: ${entry.number}\n\n${entry.text}`, copy: entry.text };
+    return { display: entry.text, copy: entry.text };
   }
   const dk = devKey(query);
   const rk = romanKey(query);
@@ -286,7 +288,7 @@ function entrySearch(query) {
   }
   if (!hits.length) return { display: "No nāma entry found.", copy: "" };
   const selected = hits.slice(0, 10);
-  const sections = selected.map((entry) => `Nama: ${entry.number}\n\n${entry.text}`);
+  const sections = selected.map((entry) => entry.text);
   const copies = selected.map((entry) => entry.text);
   return { display: sections.join("\n\n"), copy: copies.join("\n\n") };
 }
