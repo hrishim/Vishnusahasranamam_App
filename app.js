@@ -271,12 +271,30 @@ function renderOutput(text) {
   flushParagraph();
 }
 
+const CITATION_MAP = {
+  BG: "Bhagavad Gītā", BU: "Bṛhadāraṇyaka Upaniṣad", CU: "Chāndogya Upaniṣad",
+  TU: "Taittirīya Upaniṣad", MU: "Muṇḍaka Upaniṣad", SU: "Śvetāśvatara Upaniṣad",
+  KU: "Kaṭha Upaniṣad", PU: "Praśna Upaniṣad", TA: "Taittirīya Āraṇyaka",
+  TS: "Taittirīya Saṃhitā", AB: "Aitareya Brāhmaṇa", VP: "Viṣṇu-purāṇa",
+  MB: "Mahābhārata", "Rā": "Rāmāyaṇa",
+};
+
+function expandCitations(text) {
+  const seen = new Set();
+  return text.replace(/\b(BG|BU|CU|TU|MU|SU|KU|PU|TA|TS|AB|VP|MB|Rā)(?=\s+\d)/g, (abbr) => {
+    if (seen.has(abbr)) return abbr;
+    seen.add(abbr);
+    return `${CITATION_MAP[abbr]} (${abbr})`;
+  });
+}
+
 function entrySearch(query) {
   const number = parseNamaNumber(query);
   if (number !== null) {
     const entry = data.entries.find((item) => item.number === number);
     if (!entry) return { display: "No nāma entry found.", copy: "" };
-    return { display: entry.text, copy: entry.text };
+    const t = expandCitations(entry.text);
+    return { display: t, copy: t };
   }
   const dk = devKey(query);
   const rk = romanKey(query);
@@ -288,9 +306,8 @@ function entrySearch(query) {
   }
   if (!hits.length) return { display: "No nāma entry found.", copy: "" };
   const selected = hits.slice(0, 10);
-  const sections = selected.map((entry) => entry.text);
-  const copies = selected.map((entry) => entry.text);
-  return { display: sections.join("\n\n"), copy: copies.join("\n\n") };
+  const sections = selected.map((entry) => expandCitations(entry.text));
+  return { display: sections.join("\n\n"), copy: sections.join("\n\n") };
 }
 
 function slokaSearch(query) {
