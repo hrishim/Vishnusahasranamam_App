@@ -241,6 +241,7 @@ function appendParagraphs(text) {
 function renderOutput(text) {
   document.body.classList.toggle("has-result", Boolean(String(text || "").trim()));
   output.textContent = "";
+  output.scrollTop = 0;
   const lines = String(text || "").replace(/\r\n/g, "\n").split("\n");
   let paragraph = [];
 
@@ -294,6 +295,7 @@ function renderOutput(text) {
   }
   flushParagraph();
   output.scrollTop = 0;
+  requestAnimationFrame(() => { output.scrollTop = 0; });
 }
 
 const CITATION_MAP = {
