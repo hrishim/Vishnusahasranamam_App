@@ -274,6 +274,7 @@ function renderOutput(text) {
     paragraph.push(line);
   }
   flushParagraph();
+  output.scrollTop = 0;
 }
 
 const CITATION_MAP = {
