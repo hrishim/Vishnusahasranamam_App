@@ -395,9 +395,13 @@ function runSearch() {
   copyText = result.copy;
   setSelectedNama(activeMode === "entry" ? parseNamaNumber(query) : null);
   setStatus("Ready");
-  output.scrollTop = 0;
-  window.scrollTo(0, 0);
-  document.documentElement.scrollTop = 0;
+  // Blur first so the iOS keyboard starts dismissing, then scroll after it's gone
+  queryInput.blur();
+  setTimeout(() => {
+    output.scrollTop = 0;
+    window.scrollTo(0, 0);
+    document.documentElement.scrollTop = 0;
+  }, 100);
 }
 
 async function copyOutput() {
