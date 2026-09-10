@@ -202,10 +202,19 @@ function makeTextNode(tag, className, text) {
 function appendParagraphs(text) {
   const clean = text.replace(/\s+/g, " ").trim();
   if (!clean) return;
-  const sentences = clean.match(/[^.!?]+[.!?]+(?:\s+|$)|[^.!?]+$/g) || [clean];
+  const raw = clean.match(/[^.!?]+[.!?]+(?:\s+|$)|[^.!?]+$/g) || [clean];
+  // Merge any fragment that is just closing punctuation (e.g. ")" split off by sentence regex)
+  const sentences = [];
+  for (const part of raw) {
+    const s = part.trim();
+    if (/^[)\]"'»]+$/.test(s) && sentences.length) {
+      sentences[sentences.length - 1] = sentences[sentences.length - 1].trimEnd() + s;
+    } else {
+      sentences.push(s);
+    }
+  }
   let current = "";
-  for (const part of sentences) {
-    const sentence = part.trim();
+  for (const sentence of sentences) {
     const candidate = current ? `${current} ${sentence}` : sentence;
     if (current && candidate.length > 520) {
       makeTextNode("p", "result-paragraph", current);
@@ -277,16 +286,20 @@ function renderOutput(text) {
 }
 
 const CITATION_MAP = {
-  BG: "Bhagavad Gītā", BU: "Bṛhadāraṇyaka Upaniṣad", CU: "Chāndogya Upaniṣad",
-  TU: "Taittirīya Upaniṣad", MU: "Muṇḍaka Upaniṣad", SU: "Śvetāśvatara Upaniṣad",
-  KU: "Kaṭha Upaniṣad", PU: "Praśna Upaniṣad", TA: "Taittirīya Āraṇyaka",
-  TS: "Taittirīya Saṃhitā", AB: "Aitareya Brāhmaṇa", VP: "Viṣṇu-purāṇa",
-  MB: "Mahābhārata", "Rā": "Rāmāyaṇa",
+  ADS: "Āpastamba Dharmasūtra", BG: "Bhagavad Gītā", BS: "Brahmasūtra",
+  BU: "Bṛhadāraṇyaka Upaniṣad", CU: "Chāndogya Upaniṣad", HV: "Harivaṃśa",
+  IU: "Īśāvāsya Upaniṣad", JB: "Jaiminīya Brāhmaṇa", KU: "Kaṭha Upaniṣad",
+  LP: "Liṅga Purāṇa", MB: "Mahābhārata", MNU: "Mahānārāyaṇa Upaniṣad",
+  MU: "Muṇḍaka Upaniṣad", PS: "Pāṇini's Aṣṭādhyāyī", PU: "Praśna Upaniṣad",
+  RV: "Ṛgveda", SU: "Śvetāśvatara Upaniṣad", TA: "Taittirīya Āraṇyaka",
+  TB: "Taittirīya Brāhmaṇa", TĀ: "Taittirīya Āraṇyaka", TS: "Taittirīya Saṃhitā",
+  TU: "Taittirīya Upaniṣad", AB: "Aitareya Brāhmaṇa", VD: "Viṣṇudharmottara Purāṇa",
+  VP: "Viṣṇu-purāṇa", VS: "Viṣṇu Smṛti", "Rā": "Rāmāyaṇa",
 };
 
 function addCitationLegend(text) {
   const seen = new Map();
-  const pattern = /\b(BG|BU|CU|TU|MU|SU|KU|PU|TA|TS|AB|VP|MB|Rā)(?=\s+\d)/g;
+  const pattern = /\b(MNU|ADS|BG|BS|BU|CU|HV|IU|JB|KU|LP|MU|PS|PU|RV|SU|TA|TB|TĀ|TS|AB|VD|VP|VS|MB|Rā)(?=\s+\d)/g;
   let m;
   while ((m = pattern.exec(text)) !== null) {
     if (!seen.has(m[1])) seen.set(m[1], CITATION_MAP[m[1]]);
