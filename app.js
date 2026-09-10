@@ -202,17 +202,8 @@ function makeTextNode(tag, className, text) {
 function appendParagraphs(text) {
   const clean = text.replace(/\s+/g, " ").trim();
   if (!clean) return;
-  const raw = clean.match(/[^.!?]+[.!?]+(?:\s+|$)|[^.!?]+$/g) || [clean];
-  // Merge any fragment that is just closing punctuation (e.g. ")" split off by sentence regex)
-  const sentences = [];
-  for (const part of raw) {
-    const s = part.trim();
-    if (/^[)\]"'»]+$/.test(s) && sentences.length) {
-      sentences[sentences.length - 1] = sentences[sentences.length - 1].trimEnd() + s;
-    } else {
-      sentences.push(s);
-    }
-  }
+  // Allow optional closing brackets/quotes after sentence-ending punctuation
+  const sentences = clean.match(/[^.!?]+[.!?]+[)\]"'»]*(?:\s+|$)|[^.!?]+$/g) || [clean];
   let current = "";
   for (const sentence of sentences) {
     const candidate = current ? `${current} ${sentence}` : sentence;
