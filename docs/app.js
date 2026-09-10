@@ -198,26 +198,26 @@ function makeTextNode(tag, className, text) {
 }
 
 function appendParagraphs(text) {
-  const clean = text.replace(/\s+/g, “ “).trim();
+  const clean = text.replace(/\s+/g, " ").trim();
   if (!clean) return;
   // Guard decimal dots in verse references (e.g. 9.4, 3.7.20, 4.4.22) — two passes for 3-part refs
-  const guardD = (s) => s.replace(/(\d)\.(\d)/g, “$1·$2”).replace(/(\d)\.(\d)/g, “$1·$2”);
-  const unguardD = (s) => s.replace(/(\d)·(\d)/g, “$1.$2”).replace(/(\d)·(\d)/g, “$1.$2”);
+  const guardD = (s) => s.replace(/(\d)\.(\d)/g, "$1·$2").replace(/(\d)\.(\d)/g, "$1·$2");
+  const unguardD = (s) => s.replace(/(\d)·(\d)/g, "$1.$2").replace(/(\d)·(\d)/g, "$1.$2");
   // Guard abbreviation dots to prevent incorrect sentence splitting:
   //   i.e.  →  i∙e∙  (both dots guarded)
   //   etc., Anu., Sū., Dh., Br., Āp., Ai.  →  etc∙  etc.
   //   single-letter (U., Ā.) before digit or uppercase  →  U∙ 60
-  const G = “∙”; // ∙ U+2219 bullet operator — abbreviation dot placeholder
+  const G = "∙"; // ∙ U+2219 bullet operator — abbreviation dot placeholder
   const guardA = (s) =>
     s
       .replace(/\bi\.e\./g, `i${G}e${G}`)
       .replace(/\b(etc|Anu|Sū|Su|Dh|Br|Āp|Ap|Ai|Aś|Kāṇ)\./g, `$1${G}`)
-      .replace(new RegExp(`\\b([A-ZĀ])\\.(\\s)(?=[A-ZĀŪĪ0-9])`, “g”), `$1${G}$2`);
+      .replace(new RegExp(`\\b([A-ZĀ])\\.(\\s)(?=[A-ZĀŪĪ0-9])`, "g"), `$1${G}$2`);
   const unguardA = (s) =>
     s
-      .replace(new RegExp(`i${G}e${G}`, “g”), “i.e.”)
-      .replace(new RegExp(`(etc|Anu|Sū|Su|Dh|Br|Āp|Ap|Ai|Aś|Kāṇ)${G}`, “g”), “$1.”)
-      .replace(new RegExp(`([A-ZĀ])${G}(\\s)`, “g”), “$1.$2”);
+      .replace(new RegExp(`i${G}e${G}`, "g"), "i.e.")
+      .replace(new RegExp(`(etc|Anu|Sū|Su|Dh|Br|Āp|Ap|Ai|Aś|Kāṇ)${G}`, "g"), "$1.")
+      .replace(new RegExp(`([A-ZĀ])${G}(\\s)`, "g"), "$1.$2");
   const guarded = guardA(guardD(clean));
   // Extended split: allow an extra [.!?]* after the closing brackets so that
   // patterns like (What?). or (etc.). are kept as one sentence instead of splitting
