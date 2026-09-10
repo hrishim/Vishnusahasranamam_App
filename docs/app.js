@@ -176,7 +176,7 @@ async function loadData() {
   data = await response.json();
   buildMaps();
   renderNamaList();
-  setStatus("Ready");
+  openNama(1);
 }
 
 function setMode(mode) {
