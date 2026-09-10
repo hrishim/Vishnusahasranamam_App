@@ -360,6 +360,14 @@ body:not(.has-result) .actionbar {
 
 .translit-line {
   font-size: 16px;
+  color: #425066;
+}
+
+.result-legend {
+  margin-top: 14px;
+  font-size: 12px;
+  color: var(--muted);
+  letter-spacing: 0.01em;
 }
 
 .result-bullet {
