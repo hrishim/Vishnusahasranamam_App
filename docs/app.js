@@ -11,7 +11,7 @@ const modeButtons = Array.from(document.querySelectorAll(".mode-button"));
 const namaList = document.querySelector("#namaList");
 const namaCount = document.querySelector("#namaCount");
 const namaFilter = document.querySelector("#namaFilter");
-const APP_VERSION = "v17";
+const APP_VERSION = "v18";
 
 let activeMode = "entry";
 let copyText = "";
