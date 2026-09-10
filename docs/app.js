@@ -256,6 +256,11 @@ function renderOutput(text) {
       makeTextNode("p", "result-bullet", line.slice(2).trim());
       continue;
     }
+    if (line.startsWith("Abbr. ")) {
+      flushParagraph();
+      makeTextNode("p", "result-legend", line.slice(6));
+      continue;
+    }
     if (hasDevanagari(line)) {
       flushParagraph();
       makeTextNode("div", "script-line", line);
@@ -279,13 +284,16 @@ const CITATION_MAP = {
   MB: "Mahābhārata", "Rā": "Rāmāyaṇa",
 };
 
-function expandCitations(text) {
-  const seen = new Set();
-  return text.replace(/\b(BG|BU|CU|TU|MU|SU|KU|PU|TA|TS|AB|VP|MB|Rā)(?=\s+\d)/g, (abbr) => {
-    if (seen.has(abbr)) return abbr;
-    seen.add(abbr);
-    return `${CITATION_MAP[abbr]} (${abbr})`;
-  });
+function addCitationLegend(text) {
+  const seen = new Map();
+  const pattern = /\b(BG|BU|CU|TU|MU|SU|KU|PU|TA|TS|AB|VP|MB|Rā)(?=\s+\d)/g;
+  let m;
+  while ((m = pattern.exec(text)) !== null) {
+    if (!seen.has(m[1])) seen.set(m[1], CITATION_MAP[m[1]]);
+  }
+  if (!seen.size) return text;
+  const legend = [...seen.entries()].map(([k, v]) => `${k} = ${v}`).join("  ·  ");
+  return `${text}\n\nAbbr. ${legend}`;
 }
 
 function entrySearch(query) {
@@ -293,7 +301,7 @@ function entrySearch(query) {
   if (number !== null) {
     const entry = data.entries.find((item) => item.number === number);
     if (!entry) return { display: "No nāma entry found.", copy: "" };
-    const t = expandCitations(entry.text);
+    const t = addCitationLegend(entry.text);
     return { display: t, copy: t };
   }
   const dk = devKey(query);
@@ -306,7 +314,7 @@ function entrySearch(query) {
   }
   if (!hits.length) return { display: "No nāma entry found.", copy: "" };
   const selected = hits.slice(0, 10);
-  const sections = selected.map((entry) => expandCitations(entry.text));
+  const sections = selected.map((entry) => addCitationLegend(entry.text));
   return { display: sections.join("\n\n"), copy: sections.join("\n\n") };
 }
 
