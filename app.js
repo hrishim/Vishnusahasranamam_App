@@ -395,6 +395,9 @@ function runSearch() {
   copyText = result.copy;
   setSelectedNama(activeMode === "entry" ? parseNamaNumber(query) : null);
   setStatus("Ready");
+  output.scrollTop = 0;
+  window.scrollTo(0, 0);
+  document.documentElement.scrollTop = 0;
 }
 
 async function copyOutput() {
