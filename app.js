@@ -11,7 +11,7 @@ const modeButtons = Array.from(document.querySelectorAll(".mode-button"));
 const namaList = document.querySelector("#namaList");
 const namaCount = document.querySelector("#namaCount");
 const namaFilter = document.querySelector("#namaFilter");
-const APP_VERSION = "v19";
+const APP_VERSION = "v20";
 
 let activeMode = "entry";
 let copyText = "";
@@ -102,10 +102,15 @@ function buildMaps() {
 function setSelectedNama(number) {
   selectedNamaNumber = number;
   if (!namaList) return;
+  let activeButton = null;
   for (const button of namaList.querySelectorAll(".nama-list-item")) {
     const selected = Number(button.dataset.number) === number;
     button.classList.toggle("active", selected);
     button.setAttribute("aria-selected", selected ? "true" : "false");
+    if (selected) activeButton = button;
+  }
+  if (activeButton) {
+    activeButton.scrollIntoView({ block: "nearest", behavior: "instant" });
   }
 }
 
@@ -160,6 +165,10 @@ function openNama(number) {
   copyText = result.copy;
   setSelectedNama(number);
   setStatus(`Nāma ${number}`);
+  // Final definitive reset — after setSelectedNama's scrollIntoView has run
+  output.scrollTop = 0;
+  window.scrollTo(0, 0);
+  document.documentElement.scrollTop = 0;
 }
 
 async function loadData() {
@@ -296,10 +305,7 @@ function renderOutput(text) {
   flushParagraph();
   output.scrollTop = 0;
   window.scrollTo(0, 0);
-  requestAnimationFrame(() => {
-    output.scrollTop = 0;
-    window.scrollTo(0, 0);
-  });
+  document.documentElement.scrollTop = 0;
 }
 
 const CITATION_MAP = {
