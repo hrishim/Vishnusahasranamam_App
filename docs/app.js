@@ -295,7 +295,11 @@ function renderOutput(text) {
   }
   flushParagraph();
   output.scrollTop = 0;
-  requestAnimationFrame(() => { output.scrollTop = 0; });
+  window.scrollTo(0, 0);
+  requestAnimationFrame(() => {
+    output.scrollTop = 0;
+    window.scrollTo(0, 0);
+  });
 }
 
 const CITATION_MAP = {
