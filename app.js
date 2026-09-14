@@ -11,7 +11,7 @@ const modeButtons = Array.from(document.querySelectorAll(".mode-button"));
 const namaList = document.querySelector("#namaList");
 const namaCount = document.querySelector("#namaCount");
 const namaFilter = document.querySelector("#namaFilter");
-const APP_VERSION = "v20";
+const APP_VERSION = "v21";
 
 let activeMode = "entry";
 let copyText = "";
@@ -103,9 +103,7 @@ function setSelectedNama(number) {
   selectedNamaNumber = number;
   if (!namaList) return;
   for (const button of namaList.querySelectorAll(".nama-list-item")) {
-    const selected = Number(button.dataset.number) === number;
-    button.classList.toggle("active", selected);
-    button.setAttribute("aria-selected", selected ? "true" : "false");
+    button.classList.toggle("active", Number(button.dataset.number) === number);
   }
 }
 
@@ -126,9 +124,6 @@ function renderNamaList() {
     button.type = "button";
     button.className = "nama-list-item";
     button.dataset.number = String(entry.number);
-    button.setAttribute("role", "option");
-    button.setAttribute("aria-selected", "false");
-
     const number = document.createElement("span");
     number.className = "nama-number";
     number.textContent = String(entry.number);
@@ -230,10 +225,15 @@ function appendParagraphs(text) {
   const guarded = guardA(guardD(clean));
   // Extended split: allow an extra [.!?]* after the closing brackets so that
   // patterns like (What?). or (etc.). are kept as one sentence instead of splitting
-  const rawSentences = guarded.match(/[^.!?]+[.!?]+[)\]”’”’»]*[.!?]*[)\]”’”’»]*(?:\s+|$)|[^.!?]+$/g) || [guarded];
+  const rawSentences = guarded.match(/[^.!?]+[.!?]+[)\]'”’”’»]*[.!?]*[)\]'”’”’»]*(?:\s+|$)|[^.!?]+$/g) || [guarded];
   const sentences = rawSentences.map((s) => unguardA(unguardD(s)).trim()).filter(Boolean);
   let current = "";
   for (const sentence of sentences) {
+    // Bare parenthetical (citation, verse ref, qualifier) — attach to preceding sentence
+    if (/^\([^)]+\)$/.test(sentence) && current) {
+      current = `${current} ${sentence}`;
+      continue;
+    }
     const candidate = current ? `${current} ${sentence}` : sentence;
     if (current && candidate.length > 520) {
       makeTextNode("p", "result-paragraph", current);
@@ -400,8 +400,15 @@ function runSearch() {
     output.scrollTop = 0;
     window.scrollTo(0, 0);
     // Scroll the nāma list to show the highlighted entry
-    const activeBtn = namaList ? namaList.querySelector(".nama-list-item.active") : null;
-    if (activeBtn) activeBtn.scrollIntoView({ block: "nearest", behavior: "instant" });
+    if (namaList) {
+      const activeBtn = namaList.querySelector(".nama-list-item.active");
+      if (activeBtn) {
+        const btnRect = activeBtn.getBoundingClientRect();
+        const listRect = namaList.getBoundingClientRect();
+        const relTop = btnRect.top - listRect.top + namaList.scrollTop;
+        namaList.scrollTop = Math.max(0, relTop - namaList.clientHeight / 3);
+      }
+    }
   }, 100);
 }
 
