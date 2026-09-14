@@ -163,8 +163,12 @@ function openNama(number) {
   setStatus(`Nāma ${number}`);
   output.scrollTop = 0;
   window.scrollTo(0, 0);
-  document.documentElement.scrollTop = 0;
   if (namaList) namaList.scrollTop = savedListScroll;
+  // Defer again to win over any post-tap browser auto-scroll
+  setTimeout(() => {
+    output.scrollTop = 0;
+    if (namaList) namaList.scrollTop = savedListScroll;
+  }, 0);
 }
 
 async function loadData() {
@@ -301,7 +305,6 @@ function renderOutput(text) {
   flushParagraph();
   output.scrollTop = 0;
   window.scrollTo(0, 0);
-  document.documentElement.scrollTop = 0;
 }
 
 const CITATION_MAP = {
@@ -396,7 +399,6 @@ function runSearch() {
   setTimeout(() => {
     output.scrollTop = 0;
     window.scrollTo(0, 0);
-    document.documentElement.scrollTop = 0;
     // Scroll the nāma list to show the highlighted entry
     const activeBtn = namaList ? namaList.querySelector(".nama-list-item.active") : null;
     if (activeBtn) activeBtn.scrollIntoView({ block: "nearest", behavior: "instant" });
