@@ -397,6 +397,9 @@ function runSearch() {
     output.scrollTop = 0;
     window.scrollTo(0, 0);
     document.documentElement.scrollTop = 0;
+    // Scroll the nāma list to show the highlighted entry
+    const activeBtn = namaList ? namaList.querySelector(".nama-list-item.active") : null;
+    if (activeBtn) activeBtn.scrollIntoView({ block: "nearest", behavior: "instant" });
   }, 100);
 }
 
