@@ -153,6 +153,7 @@ function openNama(number) {
   if (!data) return;
   const entry = data.entries.find((item) => item.number === number);
   if (!entry) return;
+  const savedListScroll = namaList ? namaList.scrollTop : 0;
   setMode("entry");
   queryInput.value = entry.devanagari;
   const result = entrySearch(String(number));
@@ -160,10 +161,10 @@ function openNama(number) {
   copyText = result.copy;
   setSelectedNama(number);
   setStatus(`Nāma ${number}`);
-  // Final definitive reset — after setSelectedNama's scrollIntoView has run
   output.scrollTop = 0;
   window.scrollTo(0, 0);
   document.documentElement.scrollTop = 0;
+  if (namaList) namaList.scrollTop = savedListScroll;
 }
 
 async function loadData() {
