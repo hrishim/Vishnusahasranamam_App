@@ -11,7 +11,7 @@ const modeButtons = Array.from(document.querySelectorAll(".mode-button"));
 const namaList = document.querySelector("#namaList");
 const namaCount = document.querySelector("#namaCount");
 const namaFilter = document.querySelector("#namaFilter");
-const APP_VERSION = "v21";
+const APP_VERSION = "v22";
 
 let activeMode = "entry";
 let copyText = "";
@@ -335,9 +335,9 @@ function entrySearch(query) {
   const number = parseNamaNumber(query);
   if (number !== null) {
     const entry = data.entries.find((item) => item.number === number);
-    if (!entry) return { display: "No nāma entry found.", copy: "" };
+    if (!entry) return { display: "No nāma entry found.", copy: "", number: null };
     const t = addCitationLegend(entry.text);
-    return { display: t, copy: t };
+    return { display: t, copy: t, number: entry.number };
   }
   const dk = devKey(query);
   const rk = romanKey(query);
@@ -347,10 +347,14 @@ function entrySearch(query) {
   else if (rk) {
     hits = data.entries.filter((entry) => entry.keys.some((key) => key.startsWith(rk)));
   }
-  if (!hits.length) return { display: "No nāma entry found.", copy: "" };
+  if (!hits.length) return { display: "No nāma entry found.", copy: "", number: null };
   const selected = hits.slice(0, 10);
   const sections = selected.map((entry) => addCitationLegend(entry.text));
-  return { display: sections.join("\n\n"), copy: sections.join("\n\n") };
+  return {
+    display: sections.join("\n\n"),
+    copy: sections.join("\n\n"),
+    number: hits.length === 1 ? hits[0].number : null,
+  };
 }
 
 function slokaSearch(query) {
@@ -392,7 +396,12 @@ function runSearch() {
   else result = entrySearch(query);
   renderOutput(result.display);
   copyText = result.copy;
-  setSelectedNama(activeMode === "entry" ? parseNamaNumber(query) : null);
+  const foundNumber = activeMode === "entry" ? result.number : null;
+  if (foundNumber !== null) {
+    const foundEntry = data.entries.find((item) => item.number === foundNumber);
+    if (foundEntry) queryInput.value = foundEntry.devanagari;
+  }
+  setSelectedNama(foundNumber);
   setStatus("Ready");
   // Blur first so the iOS keyboard starts dismissing, then scroll after it's gone
   queryInput.blur();
