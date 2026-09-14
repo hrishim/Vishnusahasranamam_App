@@ -102,15 +102,10 @@ function buildMaps() {
 function setSelectedNama(number) {
   selectedNamaNumber = number;
   if (!namaList) return;
-  let activeButton = null;
   for (const button of namaList.querySelectorAll(".nama-list-item")) {
     const selected = Number(button.dataset.number) === number;
     button.classList.toggle("active", selected);
     button.setAttribute("aria-selected", selected ? "true" : "false");
-    if (selected) activeButton = button;
-  }
-  if (activeButton) {
-    activeButton.scrollIntoView({ block: "nearest", behavior: "instant" });
   }
 }
 
